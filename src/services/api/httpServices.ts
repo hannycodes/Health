@@ -56,18 +56,19 @@ import { clearSession, readSession, writeSession } from "@/lib/session";
 import { httpClient } from "@/lib/http";
 
 /**
- * HTTP adapters — PLACEHOLDERS.
+ * HTTP adapters.
  *
- * These call conventional REST paths under `VITE_API_BASE_URL`. The backend
- * contract is not finalised yet (see API_CONTRACT.md), so treat every path as
- * provisional and confirm it with the backend owner before switching
- * `VITE_DATA_SOURCE` to "http". Nothing here is exercised by the demo.
+ * Auth and platform administration call the local API mounted at `/api`
+ * (see `server/api.ts`). Set `VITE_API_BASE_URL` to target a deployed backend.
  */
 
 class HttpAuthService implements AuthService {
   async login(credentials: LoginCredentials): Promise<AuthSession> {
     const { remember = true, ...body } = credentials;
-    const { data } = await httpClient.post<AuthSession>("/auth/login", body);
+    const { data } = await httpClient.post<AuthSession>("/auth/login", {
+      ...body,
+      remember,
+    });
     writeSession(data, remember);
     return data;
   }

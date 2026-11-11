@@ -1,6 +1,5 @@
 import { useNavigate } from "react-router-dom";
-import { LogOut, RotateCcw, UserRound } from "lucide-react";
-import { toast } from "sonner";
+import { LogOut, UserRound } from "lucide-react";
 
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -14,7 +13,6 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { ROLE_LABELS } from "@/constants";
 import { useAuth } from "@/hooks/useAuth";
-import { demoDb } from "@/services";
 import type { Role } from "@/types";
 import { getInitials } from "@/utils/format";
 
@@ -36,11 +34,6 @@ export function UserMenu() {
     navigate("/login", { replace: true });
   }
 
-  function handleResetDemoData() {
-    demoDb.reset();
-    toast.success("Demo data reset to the seeded dataset.");
-  }
-
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
@@ -50,9 +43,11 @@ export function UserMenu() {
           </Avatar>
           <span className="hidden text-left sm:flex sm:flex-col">
             <span className="text-xs leading-tight font-medium">{user.fullName}</span>
-            <span className="text-muted-foreground text-[11px] leading-tight">
-              {ROLE_LABELS[role]}
-            </span>
+            {ROLE_LABELS[role] !== user.fullName && (
+              <span className="text-muted-foreground text-[11px] leading-tight">
+                {ROLE_LABELS[role]}
+              </span>
+            )}
           </span>
         </Button>
       </DropdownMenuTrigger>
@@ -65,10 +60,6 @@ export function UserMenu() {
         <DropdownMenuItem onClick={() => navigate(PROFILE_PATH[role])}>
           <UserRound className="size-4" />
           My profile
-        </DropdownMenuItem>
-        <DropdownMenuItem onClick={handleResetDemoData}>
-          <RotateCcw className="size-4" />
-          Reset demo data
         </DropdownMenuItem>
         <DropdownMenuSeparator />
         <DropdownMenuItem

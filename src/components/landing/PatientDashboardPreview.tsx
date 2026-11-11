@@ -3,7 +3,7 @@ import { Bell, CalendarDays, FileHeart } from "lucide-react";
 /**
  * Illustrative patient dashboard preview.
  *
- * Fictional demo data only — this is a designed mockup, not live patient
+ * Fictional data only — this is a designed mockup, not live patient
  * information.
  */
 export function PatientDashboardPreview() {

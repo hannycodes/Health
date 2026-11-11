@@ -13,7 +13,6 @@ import { ErrorState } from "@/components/common/ErrorState";
 import { ListSkeleton } from "@/components/common/LoadingSpinner";
 import { PageHeader } from "@/components/common/PageHeader";
 import { SearchInput } from "@/components/common/SearchInput";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -372,7 +371,7 @@ export function AdministratorsPage() {
         </Card>
       )}
 
-      {/* Temporary credentials are mock-only: a real backend e-mails an invite. */}
+      {/* Temporary credentials are shown once and recorded by the backend. */}
       <Dialog
         open={Boolean(credentials)}
         onOpenChange={(open) => !open && setCredentials(null)}
@@ -400,7 +399,9 @@ export function AdministratorsPage() {
                 <span className="font-mono">{credentials.password}</span>
               </p>
             )}
-            <Badge variant="outline">Demo only — no email is sent</Badge>
+            <p className="text-muted-foreground text-xs">
+              Share this password securely and ask them to change it after signing in.
+            </p>
           </div>
           <DialogFooter>
             <Button onClick={() => setCredentials(null)}>Done</Button>

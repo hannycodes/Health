@@ -51,7 +51,7 @@ export function AdminDashboardPage() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title={`Welcome back, ${user?.fullName.split(" ")[0] ?? "Super Admin"}`}
+        title={`Welcome back, ${user?.fullName === "Super Admin" ? user.fullName : (user?.fullName.split(" ")[0] ?? "Super Admin")}`}
         description={`${longDate} · Platform-wide oversight of hospitals, accounts and activity.`}
         actions={
           <Button asChild>

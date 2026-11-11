@@ -6,7 +6,6 @@ import { z } from "zod";
 import { LogIn } from "lucide-react";
 
 import { PasswordField } from "@/components/auth/PasswordField";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -17,8 +16,7 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { ROLE_HOME, ROLE_LABELS } from "@/constants";
-import { DEMO_ACCOUNTS } from "@/data/demoAccounts";
+import { ROLE_HOME } from "@/constants";
 import { useAuth } from "@/hooks/useAuth";
 import { ApiError, getApiErrorMessage } from "@/lib/http";
 
@@ -57,13 +55,6 @@ export function LoginPage() {
       setFormError(getApiErrorMessage(error));
       setErrorCode(error instanceof ApiError ? (error.code ?? null) : null);
     }
-  }
-
-  function fillDemoAccount(email: string, password: string) {
-    form.setValue("email", email, { shouldValidate: true });
-    form.setValue("password", password, { shouldValidate: true });
-    setFormError(null);
-    setErrorCode(null);
   }
 
   const awaitingApproval =
@@ -154,35 +145,6 @@ export function LoginPage() {
           </Link>
         </p>
 
-        <div className="space-y-2">
-          <p className="text-muted-foreground text-xs font-medium tracking-wide uppercase">
-            Demo accounts
-          </p>
-          <div className="grid gap-2">
-            {DEMO_ACCOUNTS.map((account) => (
-              <button
-                key={account.email}
-                type="button"
-                onClick={() => fillDemoAccount(account.email, account.password)}
-                className="hover:bg-accent flex items-center justify-between gap-2 rounded-lg border px-3 py-2 text-left transition-colors"
-              >
-                <span className="min-w-0">
-                  <span className="block text-xs font-medium">
-                    {account.description}
-                  </span>
-                  <span className="text-muted-foreground block truncate text-[11px]">
-                    {account.email} · {account.password}
-                  </span>
-                </span>
-                <Badge variant="secondary">{ROLE_LABELS[account.role]}</Badge>
-              </button>
-            ))}
-          </div>
-          <p className="text-muted-foreground text-[11px]">
-            Demo environment — credentials are fictional and no real patient
-            data is used.
-          </p>
-        </div>
       </CardContent>
     </Card>
   );

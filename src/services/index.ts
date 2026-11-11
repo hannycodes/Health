@@ -3,14 +3,37 @@ import { createHttpServices } from "./api/httpServices";
 import { mockServices } from "./mocks";
 import { demoDb } from "./mocks/store";
 
+const httpServices = createHttpServices();
+
 /**
- * The only place the UI resolves a service implementation.
+ * Auth, platform administration and shared directory data talk to the local
+ * API (`server/api.ts`, mounted at `/api` by Vite). Patient-side appointment,
+ * payment, medical-record and AI flows still use the shared mock services
+ * until those endpoints are added.
  *
- * Defaults to the mock container so every dashboard is usable before the
- * backend exists. Set `VITE_DATA_SOURCE=http` once the API contract is final.
+ * `VITE_DATA_SOURCE=mock` keeps tests fully in-memory; `http` routes every
+ * service through the API.
  */
+const hybridServices: ServiceContainer = {
+  ...mockServices,
+  auth: httpServices.auth,
+  users: httpServices.users,
+  administrators: httpServices.administrators,
+  auditLogs: httpServices.auditLogs,
+  analytics: httpServices.analytics,
+  settings: httpServices.settings,
+  hospitals: httpServices.hospitals,
+  doctors: httpServices.doctors,
+  patients: httpServices.patients,
+  notifications: httpServices.notifications,
+};
+
 export const services: ServiceContainer =
-  import.meta.env.VITE_DATA_SOURCE === "http" ? createHttpServices() : mockServices;
+  import.meta.env.VITE_DATA_SOURCE === "mock"
+    ? mockServices
+    : import.meta.env.VITE_DATA_SOURCE === "http"
+      ? httpServices
+      : hybridServices;
 
 export const appointmentService = services.appointments;
 export const authService = services.auth;

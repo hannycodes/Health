@@ -35,7 +35,7 @@ describe("platform dashboard", () => {
     renderAt("/admin/dashboard");
 
     expect(
-      await screen.findByRole("heading", { name: /welcome back, daniel/i }),
+      await screen.findByRole("heading", { name: /welcome back, super admin/i }),
     ).toBeInTheDocument();
     expect(await screen.findByText(/total hospitals/i)).toBeInTheDocument();
     expect(
@@ -60,7 +60,7 @@ describe("hospital approval workflow", () => {
 
     const logs = await services.auditLogs.list({ action: "HOSPITAL_APPROVED" });
     expect(logs[0]?.entityId).toBe("hsp-004");
-    expect(logs[0]?.actorName).toBe("Daniel Fikru");
+    expect(logs[0]?.actorName).toBe("Super Admin");
 
     const notifications = await services.notifications.listForUser("adm-003");
     expect(notifications.some((item) => item.title.includes("approved"))).toBe(true);

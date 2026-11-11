@@ -36,6 +36,6 @@ export const DEMO_ACCOUNTS: DemoAccount[] = [
     email: "admin@myhealth.et",
     password: DEMO_PASSWORD,
     role: "SUPER_ADMIN",
-    description: "Daniel Fikru — platform administration",
+    description: "Super Admin — platform administration",
   },
 ];

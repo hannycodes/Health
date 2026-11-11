@@ -13,7 +13,6 @@ import { ErrorState } from "@/components/common/ErrorState";
 import { ListSkeleton } from "@/components/common/LoadingSpinner";
 import { PageHeader } from "@/components/common/PageHeader";
 import { StatCard } from "@/components/common/StatCard";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -56,7 +55,6 @@ export function AdminAnalyticsPage() {
           { label: "Platform admin", to: "/admin/dashboard" },
           { label: "Analytics" },
         ]}
-        actions={<Badge variant="outline">Demo data</Badge>}
       />
 
       <div className="flex flex-wrap items-end gap-3">
@@ -223,8 +221,8 @@ export function AdminAnalyticsPage() {
       )}
 
       <p className="text-muted-foreground text-xs">
-        Figures come from the shared service layer. This demo environment uses
-        seeded fictional records — treat them as demo data, not production metrics.
+        Figures are calculated by the platform API from current hospital, user and
+        appointment records.
       </p>
     </div>
   );

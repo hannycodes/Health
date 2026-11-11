@@ -56,7 +56,7 @@ export class MockAuthService implements AuthService {
       throw new ApiError({
         status: 401,
         code: "INVALID_CREDENTIALS",
-        message: "Invalid email or password. Try one of the demo accounts below.",
+        message: "Invalid email or password.",
       });
     }
 

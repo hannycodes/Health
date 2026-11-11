@@ -27,7 +27,6 @@ type Values = z.infer<typeof schema>;
 export function ForgotPasswordPage() {
   const { forgotPassword } = useAuth();
   const [sent, setSent] = useState(false);
-  const [devToken, setDevToken] = useState<string | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
 
   const form = useForm<Values>({
@@ -38,8 +37,7 @@ export function ForgotPasswordPage() {
   async function onSubmit(values: Values) {
     setFormError(null);
     try {
-      const result = await forgotPassword(values.email);
-      setDevToken(result.devResetToken ?? null);
+      await forgotPassword(values.email);
       setSent(true);
     } catch (error) {
       setFormError(getApiErrorMessage(error));
@@ -64,19 +62,6 @@ export function ForgotPasswordPage() {
             For your security we do not confirm whether an email address is
             registered. The link expires in one hour.
           </p>
-
-          {devToken && (
-            <div className="space-y-2 rounded-lg border border-dashed border-amber-300 bg-amber-50 p-3">
-              <p className="text-xs font-medium text-amber-900">
-                Development only — no email is sent in the demo environment
-              </p>
-              <Button asChild size="sm" variant="outline">
-                <Link to={`/reset-password?token=${encodeURIComponent(devToken)}`}>
-                  Open the reset link
-                </Link>
-              </Button>
-            </div>
-          )}
 
           <Button asChild variant="outline" className="w-full">
             <Link to="/login">

@@ -119,7 +119,7 @@ export function PatientAiNavigator() {
 
       <Card className="border-amber-200 bg-amber-50/60">
         <CardContent className="text-sm text-amber-900">
-          This demo uses simple keyword rules, not a medical AI model. It is not a
+          This assistant uses simple keyword rules, not a medical AI model. It is not a
           diagnosis. For emergencies, contact emergency services immediately.
         </CardContent>
       </Card>
