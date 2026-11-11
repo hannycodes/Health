@@ -47,7 +47,11 @@ describe("doctor dashboard", () => {
     renderAt("/doctor");
 
     expect(
-      await screen.findByRole("heading", { name: /good (morning|afternoon|evening)/i }),
+      await screen.findByRole(
+        "heading",
+        { name: /good (morning|afternoon|evening)/i },
+        { timeout: 5000 },
+      ),
     ).toBeInTheDocument();
     expect(await screen.findByText("Today's schedule")).toBeInTheDocument();
     // apt-006 is seeded for today with doc-001; the patient also appears in

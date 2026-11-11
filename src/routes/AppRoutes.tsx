@@ -51,7 +51,6 @@ import { PatientHospitals } from "@/pages/patient/PatientHospitals";
 import { PatientMedicalHistory } from "@/pages/patient/PatientMedicalHistory";
 import { PatientProfile } from "@/pages/patient/PatientProfile";
 import { NotFoundPage } from "@/pages/shared/NotFoundPage";
-import { ScaffoldPage } from "@/pages/shared/ScaffoldPage";
 import { UnauthorizedPage } from "@/pages/shared/UnauthorizedPage";
 import { AdminActivityPage } from "@/pages/super-admin/AdminActivityPage";
 import { AdminAnalyticsPage } from "@/pages/super-admin/AdminAnalyticsPage";

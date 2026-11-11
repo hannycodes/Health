@@ -1,4 +1,4 @@
-import { NavLink } from "react-router-dom";
+import { NavLink, useNavigate } from "react-router-dom";
 import { LogOut } from "lucide-react";
 
 import { Logo } from "@/components/branding/Logo";
