@@ -32,9 +32,6 @@ describe("landing page", () => {
       screen.getByRole("heading", { name: /everything you need/i }),
     ).toBeInTheDocument();
     expect(
-      screen.getByRole("heading", { name: /a simpler healthcare journey/i }),
-    ).toBeInTheDocument();
-    expect(
       screen.getByRole("heading", { name: /intelligence that supports human care/i }),
     ).toBeInTheDocument();
     expect(
@@ -44,7 +41,6 @@ describe("landing page", () => {
     for (const id of [
       "top",
       "features",
-      "how-it-works",
       "for-patients",
       "for-hospitals",
       "about",
@@ -61,8 +57,12 @@ describe("landing page", () => {
     const featuresLinks = screen.getAllByRole("link", { name: "Features" });
     expect(featuresLinks[0]).toHaveAttribute("href", "#features");
 
-    const hospitalLinks = screen.getAllByRole("link", { name: "For Hospitals" });
-    expect(hospitalLinks[0]).toHaveAttribute("href", "#for-hospitals");
+    expect(
+      screen.getAllByRole("link", { name: /get started/i })[0],
+    ).toHaveAttribute("href", "/register");
+    expect(
+      screen.getAllByRole("link", { name: /^sign in$/i })[0],
+    ).toHaveAttribute("href", "/login");
   });
 
   it("opens the role selection dialog from Get Started", async () => {

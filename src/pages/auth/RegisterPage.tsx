@@ -167,6 +167,25 @@ export function RegisterPage() {
         </CardDescription>
       </CardHeader>
       <CardContent>
+        <div className="bg-muted/40 mb-5 space-y-2 rounded-lg border p-3 text-xs leading-relaxed">
+          <p className="text-sm font-medium">Who registers where</p>
+          <p>
+            <span className="font-medium">Patients</span> — create your account
+            below to book appointments and keep your medical history in one place.
+          </p>
+          <p>
+            <span className="font-medium">Doctors</span> — shift cover is arranged
+            with the hospital that needs it. The platform administrator verifies
+            your licence and documents before you can take shifts, then you sign in
+            with the account they set up.
+          </p>
+          <p>
+            <span className="font-medium">Hospitals</span> — request onboarding
+            through the platform administrator. Once the hospital is verified, its
+            team can post shift cover and manage appointments.
+          </p>
+        </div>
+
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4" noValidate>
           <div className="space-y-1.5">
             <Label htmlFor="fullName">Full name</Label>
