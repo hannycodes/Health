@@ -3,9 +3,12 @@ import express from "express";
 import { db, nextId, saveDb } from "../db.js";
 import {
   HttpError,
+  assertAccountUsable,
   checkPassword,
+  hashPassword,
   publicUser,
   requireRole,
+  sessionExpiry,
   signToken,
 } from "../auth.js";
 import {
@@ -15,6 +18,7 @@ import {
   getUser,
   notifyHospitalAdmins,
   pushNotification,
+  recordAudit,
   requireHospitalScope,
   scopedHospitalId,
   SPECIALTIES,
@@ -52,14 +56,137 @@ export function directoryRoutes(auth) {
     );
 
     if (!user || !user.passwordHash || !checkPassword(password, user.passwordHash)) {
-      throw new HttpError(401, "Invalid email or password.");
+      throw new HttpError(401, "Invalid email or password.", "INVALID_CREDENTIALS");
     }
+
+    const hospital = user.hospitalId ? getHospital(user.hospitalId) : undefined;
+    assertAccountUsable(user, hospital);
+
+    const remember = req.body?.remember !== false;
+    const token = signToken(user, remember);
 
     res.json({
       user: publicUser(user),
-      token: signToken(user),
-      hospitalId: user.hospitalId,
+      token,
+      hospitalId: hospital?.id,
+      expiresAt: sessionExpiry(token),
     });
+  });
+
+  router.post("/auth/register", (req, res) => {
+    const body = req.body ?? {};
+    const email = String(body.email ?? "").trim().toLowerCase();
+
+    assert(EMAIL_PATTERN.test(email), 422, "Enter a valid email address.");
+    assert(
+      String(body.fullName ?? "").trim().length >= 3,
+      422,
+      "Enter your full name.",
+    );
+    assert(
+      typeof body.password === "string" && body.password.length >= 8,
+      422,
+      "Choose a password of at least 8 characters.",
+    );
+    assert(
+      body.acceptedTerms === true && body.acceptedPrivacy === true,
+      400,
+      "You must accept the terms of service and the privacy notice to create an account.",
+    );
+    assert(
+      !db.users.some((user) => user.email.toLowerCase() === email),
+      409,
+      "An account with this email address already exists.",
+    );
+
+    const patient = {
+      id: nextId("pat"),
+      email,
+      fullName: String(body.fullName).trim(),
+      role: "PATIENT",
+      phone: body.phone ? String(body.phone).trim() : undefined,
+      dateOfBirth: body.dateOfBirth || undefined,
+      gender: body.gender,
+      age: typeof body.age === "number" ? body.age : undefined,
+      weightKg: typeof body.weightKg === "number" ? body.weightKg : undefined,
+      heightCm: typeof body.heightCm === "number" ? body.heightCm : undefined,
+      medicalHistory: body.medicalHistory || undefined,
+      allergies: body.allergies || undefined,
+      currentMedications: body.currentMedications || undefined,
+      status: "ACTIVE",
+      createdAt: new Date().toISOString(),
+      passwordHash: hashPassword(body.password),
+    };
+
+    db.users = [...db.users, patient];
+    saveDb();
+
+    // No verification e-mail is sent in this environment, so the account is
+    // usable immediately; the flag keeps the client contract stable.
+    res.status(201).json({ user: publicUser(patient), requiresVerification: false });
+  });
+
+  /** Doctor and hospital applications, submitted before any account exists. */
+  router.post("/applications/:type", (req, res) => {
+    const { type } = req.params;
+    assert(type === "doctor" || type === "hospital", 404, "Unknown application type.");
+
+    const application = {
+      ...(req.body ?? {}),
+      id: nextId("app"),
+      type: type === "doctor" ? "DOCTOR" : "HOSPITAL",
+      status: "PENDING",
+      createdAt: new Date().toISOString(),
+    };
+
+    db.applications = [...db.applications, application];
+    saveDb();
+    res.status(201).json({ id: application.id, status: application.status });
+  });
+
+  router.post("/auth/forgot-password", (req, res) => {
+    const email = String(req.body?.email ?? "").trim().toLowerCase();
+    const user = db.users.find((candidate) => candidate.email.toLowerCase() === email);
+
+    if (user) {
+      const createdAt = new Date();
+      db.passwordResets = [
+        ...db.passwordResets.filter((reset) => reset.userId !== user.id),
+        {
+          token: nextId("reset"),
+          userId: user.id,
+          createdAt: createdAt.toISOString(),
+          expiresAt: new Date(createdAt.getTime() + 60 * 60_000).toISOString(),
+        },
+      ];
+      saveDb();
+      // A production deployment would e-mail this token; it is never returned.
+    }
+
+    // Always the same answer, so the endpoint cannot be used to discover emails.
+    res.json({});
+  });
+
+  router.post("/auth/reset-password", (req, res) => {
+    const token = String(req.body?.token ?? "");
+    const newPassword = String(req.body?.newPassword ?? "");
+    const reset = db.passwordResets.find((item) => item.token === token);
+
+    assert(
+      reset && new Date(reset.expiresAt).getTime() > Date.now(),
+      400,
+      "This reset link is invalid or has expired. Request a new one.",
+      "RESET_TOKEN_INVALID",
+    );
+    assert(newPassword.length >= 8, 422, "Choose a password of at least 8 characters.");
+
+    const user = getUser(reset.userId);
+    assert(user, 400, "This reset link is invalid.", "RESET_TOKEN_INVALID");
+
+    user.passwordHash = hashPassword(newPassword);
+    db.passwordResets = db.passwordResets.filter((item) => item.userId !== user.id);
+    saveDb();
+    res.json({});
   });
 
   router.use(auth);
@@ -128,15 +255,54 @@ export function directoryRoutes(auth) {
   router.patch("/hospitals/:id/approval", requireRole("SUPER_ADMIN"), (req, res) => {
     const hospital = getHospital(req.params.id);
     assert(hospital, 404, "Hospital not found.");
-    const { status } = req.body ?? {};
+
+    const { status, reactivate } = req.body ?? {};
+    const reason = String(req.body?.reason ?? "").trim();
     assert(
-      ["PENDING", "APPROVED", "REJECTED"].includes(status),
+      ["PENDING", "APPROVED", "REJECTED", "SUSPENDED"].includes(status),
       422,
-      "Status must be PENDING, APPROVED or REJECTED.",
+      "Status must be PENDING, APPROVED, REJECTED or SUSPENDED.",
     );
+    if (status === "REJECTED" || status === "SUSPENDED") {
+      assert(reason.length >= 10, 400, "Please provide a reason of at least 10 characters.");
+    }
+
+    const previous = hospital.approvalStatus;
+    const now = new Date().toISOString();
 
     hospital.approvalStatus = status;
     hospital.isVerified = status === "APPROVED";
+
+    if (status === "APPROVED") {
+      hospital.reviewedAt = now;
+      hospital.rejectionReason = undefined;
+      hospital.suspensionReason = undefined;
+    }
+    if (status === "REJECTED") {
+      hospital.reviewedAt = now;
+      hospital.rejectionReason = reason;
+    }
+    if (status === "SUSPENDED") {
+      hospital.suspensionReason = reason;
+    }
+
+    const action =
+      status === "APPROVED"
+        ? reactivate
+          ? "HOSPITAL_REACTIVATED"
+          : "HOSPITAL_APPROVED"
+        : status === "REJECTED"
+          ? "HOSPITAL_REJECTED"
+          : "HOSPITAL_SUSPENDED";
+
+    recordAudit(req.user, {
+      action,
+      entityType: "HOSPITAL",
+      entityId: hospital.id,
+      entityLabel: hospital.name,
+      description: `Hospital status changed from ${previous} to ${status}.`,
+      metadata: { from: previous, to: status, ...(reason ? { reason } : {}) },
+    });
 
     db.users
       .filter((user) => user.role === "HOSPITAL_ADMIN" && user.hospitalId === hospital.id)

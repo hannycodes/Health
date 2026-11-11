@@ -3,6 +3,7 @@ import express from "express";
 
 import { authenticate, HttpError } from "./auth.js";
 import { db } from "./db.js";
+import { adminRoutes } from "./routes/admin.routes.js";
 import { directoryRoutes } from "./routes/directory.routes.js";
 import { schedulingRoutes } from "./routes/scheduling.routes.js";
 import { supportRoutes } from "./routes/support.routes.js";
@@ -41,6 +42,7 @@ export function createApp() {
   app.use("/api", directoryRoutes(auth));
   app.use("/api", schedulingRoutes(auth));
   app.use("/api", supportRoutes(auth));
+  app.use("/api", adminRoutes(auth));
 
   app.use((req, res) => {
     res.status(404).json({ message: `No route for ${req.method} ${req.originalUrl}.` });
@@ -57,6 +59,7 @@ export function createApp() {
 
     return res.status(status).json({
       message: status >= 500 ? "Something went wrong on the server." : error.message,
+      ...(error.code ? { code: error.code } : {}),
       ...(error.details ? { details: error.details } : {}),
     });
   });

@@ -64,8 +64,9 @@ import { httpClient } from "@/lib/http";
 /**
  * HTTP adapters.
  *
- * Auth and platform administration call the local API mounted at `/api`
- * (see `server/api.ts`). Set `VITE_API_BASE_URL` to target a deployed backend.
+ * Auth and platform administration call the API in `server/` (proxied at
+ * `/api` by Vite in development). Set `VITE_API_BASE_URL` to target a
+ * deployed backend.
  */
 
 class HttpAuthService implements AuthService {

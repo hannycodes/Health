@@ -1,63 +1,87 @@
 # MyHealth API
 
-Node.js + Express backend for MyHealth. It serves the same domain contracts the
-frontend already defines in `src/types`, so switching the frontend from mocks to
-HTTP is a configuration change rather than a rewrite.
+The single backend for MyHealth: Node.js + Express, serving the same domain
+contracts the frontend defines in `src/types`.
+
+It replaces the earlier Vite-plugin API that used to live in this folder
+(`api.ts` / `seed.ts`). Those files are gone; Vite now proxies `/api` to this
+service during development, so there is one implementation and one data file.
 
 Data lives in a JSON file (`server/data/db.json`, created and seeded on first
-start, gitignored). The store is deliberately isolated in `src/db.js`: replacing
-it with PostgreSQL later means changing that one module, not the routes.
+start, gitignored). The store is isolated in `src/db.js`: replacing it with
+PostgreSQL later means changing that module, not the routes.
 
 ## Running
 
 ```bash
-cd server
-npm install
-cp .env.example .env   # optional; the defaults work locally
-npm start              # http://localhost:8000
+# first time only
+npm run api:install      # installs the server's dependencies
+
+# in one terminal
+npm run api              # http://localhost:8000
+
+# in another
+npm run dev              # Vite on :5173, proxying /api to :8000
 ```
 
-`npm run dev` restarts on file changes. Health check: `GET /api/health`.
+Health check: `GET /api/health`. Point the frontend somewhere else with
+`VITE_API_BASE_URL`, or change the proxy target with `VITE_API_PROXY_TARGET`.
+
+Server-specific settings live in `server/.env` (see `.env.example`):
+`PORT`, `JWT_SECRET`, `JWT_EXPIRES_IN`, `JWT_SHORT_EXPIRES_IN`, `CORS_ORIGIN`,
+`DATA_DIR`, `DEV_SEED_PASSWORD`.
 
 ## Seeded accounts
 
-Every account uses the password `Password123!` (override with
-`DEV_SEED_PASSWORD` before the first start, since the hash is created at seed
-time).
+Every account uses `myhealth123` (override with `DEV_SEED_PASSWORD` before the
+first start, since hashes are created at seed time).
 
-| Email | Role | Scope |
+| Email | Role | Notes |
 | --- | --- | --- |
 | `patient@myhealth.et` | PATIENT | pat-001 |
 | `doctor@myhealth.et` | DOCTOR | doc-001, hsp-001 |
 | `hospital@myhealth.et` | HOSPITAL_ADMIN | adm-001, hsp-001 |
 | `getachew.bekele@myhealth.et` | HOSPITAL_ADMIN | adm-002, hsp-002 |
 | `admin@myhealth.et` | SUPER_ADMIN | platform-wide |
-
-Additional patients (`hana.girma@example.com`, `dawit.mekonnen@example.com`, …)
-and doctors share the same password.
+| `sara.bekele@example.com` | PATIENT | suspended, to test the blocked-login path |
+| `meron.tesfaye@myhealth.et` | HOSPITAL_ADMIN | pending, assigned to the pending hospital |
 
 ## Authentication
 
-`POST /api/auth/login` returns `{ user, token, hospitalId }`. Send the token as
-`Authorization: Bearer <token>` on every other request. Tokens expire after
-`JWT_EXPIRES_IN` (12h by default) and the user record is reloaded on each
-request, so deactivating an account takes effect immediately.
+`POST /api/auth/login` returns `{ user, token, hospitalId, expiresAt }`. Send the
+token as `Authorization: Bearer <token>` on every other request. `remember:
+false` issues a one-hour session instead of the twelve-hour default.
 
-Patient objects never include `passwordHash`.
+Rejections carry a stable `code` the UI switches on: `INVALID_CREDENTIALS`,
+`ACCOUNT_PENDING`, `ACCOUNT_SUSPENDED`, `ACCOUNT_DISABLED`,
+`HOSPITAL_PENDING` / `HOSPITAL_REJECTED` / `HOSPITAL_SUSPENDED`,
+`SESSION_EXPIRED`, `EMAIL_TAKEN`, `RESET_TOKEN_INVALID`.
+
+The user record is reloaded on each request, so a suspended account or a
+hospital that loses approval takes effect immediately. Password hashes are never
+returned.
 
 ## Endpoints
+
+### Auth
+
+| Method | Path | Notes |
+| --- | --- | --- |
+| POST | `/api/auth/login` | public |
+| POST | `/api/auth/register` | public; patient self-registration with consent flags |
+| POST | `/api/auth/forgot-password` | public; always answers `{}` |
+| POST | `/api/auth/reset-password` | public; consumes a reset token |
+| POST | `/api/auth/logout` | any signed-in user |
+| GET | `/api/auth/me` | any signed-in user |
 
 ### Directory
 
 | Method | Path | Who |
 | --- | --- | --- |
-| POST | `/api/auth/login` | public |
-| POST | `/api/auth/logout` | any signed-in user |
-| GET | `/api/auth/me` | any signed-in user |
-| GET | `/api/hospitals` | any (admins see only their hospital) |
+| GET | `/api/hospitals` | any (hospital admins see only their own) |
 | GET | `/api/hospitals/:id` | any, scoped |
 | PATCH | `/api/hospitals/:id` | hospital admin (own), super admin |
-| PATCH | `/api/hospitals/:id/approval` | super admin |
+| PATCH | `/api/hospitals/:id/approval` | super admin; `{status, reason?, reactivate?}`, audited |
 | PATCH | `/api/hospitals/:id/capacity` | hospital admin (own), super admin |
 | GET | `/api/departments` | any, scoped |
 | GET | `/api/departments/:id` | any, scoped |
@@ -71,9 +95,7 @@ Patient objects never include `passwordHash`.
 | PATCH | `/api/doctors/:id` | hospital admin (own), super admin, doctor (self) |
 | PATCH | `/api/doctors/:id/activation` | hospital admin (own), super admin |
 | GET | `/api/doctors/:id/availability` | any, scoped |
-| POST | `/api/availability` | doctor (self), hospital admin |
-| PATCH | `/api/availability/:id` | doctor (self), hospital admin |
-| DELETE | `/api/availability/:id` | doctor (self), hospital admin |
+| POST/PATCH/DELETE | `/api/availability[/:id]` | doctor (self), hospital admin |
 | GET | `/api/patients` | doctor, hospital admin, super admin |
 | GET | `/api/patients/me` | any signed-in user |
 | GET | `/api/patients/:id` | patient (self), doctor in care, hospital admin with a visit |
@@ -83,21 +105,20 @@ Patient objects never include `passwordHash`.
 
 | Method | Path | Notes |
 | --- | --- | --- |
-| GET | `/api/appointments` | filters: `patientId`, `doctorId`, `hospitalId`, `status`, `date`; `expand=patient,doctor,hospital,payment` joins display fields |
+| GET | `/api/appointments` | filters: `patientId`, `doctorId`, `hospitalId`, `status`, `date`; `expand=...` adds joined display fields |
 | GET | `/api/appointments/:id` | scoped to the caller |
 | POST | `/api/appointments` | patient (self) or super admin; validates availability, clashes, hospital approval |
 | PATCH | `/api/appointments/:id` | status change; patients may only cancel |
 | POST | `/api/appointments/:id/cancel` | booked → cancelled |
-| POST | `/api/appointments/:id/complete` | staff only, booked → completed |
-| PATCH | `/api/appointments/:id/reschedule` | booked only; re-validates availability and clashes |
-| GET | `/api/payments` | filters: `appointmentId` (returns one payment), `patientId`, `hospitalId`, `status` |
-| POST | `/api/payments/:appointmentId/pay` | patient pays an online fee (PENDING/FAILED → PAID) |
-| POST | `/api/payments/:appointmentId/mark-paid` | hospital admin settles an outstanding pay-at-hospital fee |
+| POST | `/api/appointments/:id/complete` | staff only |
+| PATCH | `/api/appointments/:id/reschedule` | booked only; re-validates |
+| GET | `/api/payments` | filters: `appointmentId` (single payment), `patientId`, `hospitalId`, `status` |
+| POST | `/api/payments/:appointmentId/pay` | patient pays an online fee |
+| POST | `/api/payments/:appointmentId/mark-paid` | hospital admin settles an outstanding fee |
 | POST | `/api/payments/:appointmentId/mark-failed` | online payment failure |
-| GET | `/api/notifications` | caller's own notifications |
-| GET | `/api/notifications/unread-count` | returns a bare number |
-| POST | `/api/notifications/:id/read` | own notification |
-| POST | `/api/notifications/read-all` | marks every own notification read |
+| GET | `/api/notifications` | caller's own |
+| GET | `/api/notifications/unread-count` | bare number |
+| POST | `/api/notifications/:id/read`, `/api/notifications/read-all` | own notifications |
 
 ### Records and triage
 
@@ -105,120 +126,48 @@ Patient objects never include `passwordHash`.
 | --- | --- | --- |
 | GET | `/api/medical-records` | patient (own), doctor (authored), super admin; hospital admins get 403 |
 | POST | `/api/medical-records` | doctor, for a patient in their care |
-| POST | `/api/ai/triage` | patient; keyword rules → specialty, urgency, advice, suggested doctors |
+| POST | `/api/ai/triage` | patient; keyword rules → specialty, urgency, advice |
 | GET | `/api/ai/recommendations` | patient (own), super admin |
-| GET | `/api/doctors/:id/summary` | appointment counts and rating for one doctor |
+| GET | `/api/doctors/:id/summary` | appointment counts and rating |
+
+### Platform administration (super admin only)
+
+| Method | Path | Notes |
+| --- | --- | --- |
+| GET | `/api/admin/users` | filters: `role`, `status`, `hospitalId`, `search` |
+| GET | `/api/admin/users/:id` | |
+| PATCH | `/api/admin/users/:id/status` | reason required to suspend/disable; audited |
+| GET | `/api/admin/administrators` | filters: `status`, `hospitalId`, `search` |
+| POST | `/api/admin/administrators/invite` | approved hospitals only; returns a temporary password |
+| GET | `/api/admin/administrators/:id` | |
+| PATCH | `/api/admin/administrators/:id/hospital` | reassignment, audited |
+| PATCH | `/api/admin/administrators/:id/status` | reason required to suspend/disable |
+| GET | `/api/admin/audit-logs` | filters: `action`, `search`, `from`, `to` |
+| GET | `/api/admin/analytics/summary` | platform totals |
+| GET | `/api/admin/analytics/growth` | `range=7d\|30d\|90d\|custom` |
+| GET/PATCH | `/api/admin/settings` | updates are audited |
 
 ## Business rules worth knowing
 
 - **Hospital isolation.** A hospital administrator is pinned to their own
-  hospital. Asking for another hospital's id is a `403`, not a silent empty
-  list.
+  hospital; another hospital's id is a `403`, not a silent empty list.
 - **Clinical privacy.** Hospital administrators never receive diagnoses,
-  treatments or prescriptions — `GET /api/medical-records` is closed to them.
-- **Payments.** Creating an appointment with `ONLINE` records a `PAID` payment
-  (no gateway is integrated); `PAY_AT_HOSPITAL` stays `UNPAID_AT_HOSPITAL` until
-  a hospital admin settles it. Only outstanding pay-at-hospital fees can be
-  settled.
+  treatments or prescriptions.
+- **Payments.** `ONLINE` bookings record a `PAID` payment (no gateway is
+  integrated); `PAY_AT_HOSPITAL` stays `UNPAID_AT_HOSPITAL` until an
+  administrator settles it. Only outstanding fees can be settled.
 - **Registrations.** A doctor created by a hospital admin starts as
-  `PENDING_INVITATION` with no password hash and cannot be booked. Activating
-  and deactivating is separate from `isAcceptingPatients`.
+  `PENDING_INVITATION` with no password hash and cannot be booked.
 - **Appointments.** Bookings are rejected for past dates, unapproved hospitals,
   inactive or invited doctors, times outside published availability, and
   overlapping slots for either the doctor or the patient.
-
-## Two APIs share this folder
-
-`src/` is the standalone Express service documented above; it runs on its own
-port with `npm start` and is what the endpoint tables describe.
-
-`api.ts` and `seed.ts` are a different, newer implementation: a Vite plugin
-(`apiPlugin()` in `vite.config.ts`) that serves auth and platform-admin routes
-from inside the dev server, storing data in `server/data.json`. The two
-overlap and should be consolidated into one — until then, treat the Express
-API as the reference for the endpoints below and the plugin as the dev-server
-transport the frontend currently calls.
+- **Audit trail.** Approval decisions, account status changes, administrator
+  invitations/reassignments and settings updates append an audit entry whose
+  actor comes from the token, never the request body.
 
 ## Not implemented
 
-Online payment processing, email/SMS delivery (notifications are in-app rows),
-file uploads for medical documents, refresh tokens, rate limiting, and real
-database persistence. The AI triage endpoint is a keyword rule set, not a
-medical model.
-
----
-
-# Clinical AI gateway
-
-Dependency-free Node server that proxies the Doctor Portal's AI requests to an
-OpenAI-compatible provider. Its only job is to keep the provider API key out of
-the browser bundle.
-
-```bash
-# 1. Configure (server-side only — never a VITE_* variable)
-#    Preferred: put these in the git-ignored .env and `npm run dev:ai`
-#    loads it automatically.
-AI_API_KEY=...
-AI_BASE_URL=https://api.z.ai/api/paas/v4   # default (Z.ai)
-AI_CHAT_MODEL=glm-4.5v                     # vision model
-AI_TRANSCRIBE_MODEL=glm-asr-2512           # speech model (WAV/MP3)
-AI_PORT=8787                               # optional
-
-# 2. Run it next to the frontend
-npm run dev:ai    # terminal 1
-npm run dev       # terminal 2
-```
-
-Vite proxies `/api` to `http://127.0.0.1:8787`, so the browser only ever talks
-to its own origin.
-
-## Endpoints
-
-| Method | Path                 | Purpose                                            |
-| ------ | -------------------- | -------------------------------------------------- |
-| GET    | `/api/ai/status`     | Whether a key is configured, provider, models      |
-| POST   | `/api/ai/clinical`   | Patient-context clinical reasoning (JSON in/out)   |
-| POST   | `/api/ai/transcribe` | Voice message → text (raw audio body, WAV or MP3)  |
-
-### `/api/ai/clinical`
-
-```jsonc
-{
-  "task": "PATIENT_HISTORY_SUMMARY | CLINICAL_ANALYSIS | IMAGE_ASSISTANCE | DOCUMENT_SUMMARY | CLINICAL_NOTE_ASSISTANCE | RESULT_COMPARISON | GENERAL_QUESTION",
-  "message": "Summarize this patient's history",
-  "language": "en",                 // or "am"
-  "patient": { "id": "pat-001", "fullName": "…", "dateOfBirth": "1989-04-12" },
-  "records": [{ "id": "rec-001", "recordedAt": "…", "diagnosis": "…", "prescription": [] }],
-  "appointments": [{ "date": "2026-11-20", "status": "BOOKED" }],
-  "attachments": [{ "kind": "image", "name": "lesion.png", "mimeType": "image/png", "dataUrl": "data:image/png;base64,…" }]
-}
-```
-
-Returns `message`, `generatedSummary`, `observations`, `clinicalConsiderations`,
-`redFlags`, `recommendedNextSteps`, `urgency`, `followUpQuestions`,
-`limitations`, `sourceRecordIds`, `requiresDoctorReview`, `isDemo: false`.
-
-### `/api/ai/transcribe`
-
-Send the recorded audio as the raw request body with its real `Content-Type`,
-and an optional `X-Audio-Language: en|am` header. Returns `{ text, language, model }`.
-
-## Safety behaviour
-
-- The system prompt forbids confirmed diagnoses, prescriptions and dosage
-  orders, and requires documented facts to be separated from unconfirmed
-  considerations.
-- Anything the model returns is normalised so `requiresDoctorReview` is always
-  true and limitations always include the review requirement.
-- Documents (PDF/text) are **not** parsed: the model is told explicitly that it
-  has not read them, and a limitation is added to the response.
-- Images are passed as vision inputs, but the prompt forbids treating the output
-  as a radiology report or a diagnosis.
-- Request bodies are never logged; only method, path, status and latency.
-
-## Before production
-
-This gateway deliberately trusts the caller's record payload so the demo works
-without the hospital backend. In production the backend must resolve
-`patientId` itself, enforce the doctor's access rights, and ignore any records
-sent by the browser. Do not deploy this proxy as the authorisation boundary.
+Payment processing, e-mail/SMS delivery (reset tokens are stored but never
+sent), file upload for verification documents, refresh tokens, rate limiting,
+and real database persistence. AI triage is a keyword rule set, not a medical
+model.

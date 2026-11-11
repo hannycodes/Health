@@ -153,3 +153,30 @@ export function notifyHospitalAdmins(hospitalId, title, message, link) {
 export function findPaymentByAppointment(appointmentId) {
   return db.payments.find((payment) => payment.appointmentId === appointmentId);
 }
+
+export function hospitalName(hospitalId) {
+  return hospitalId ? getHospital(hospitalId)?.name : undefined;
+}
+
+/**
+ * Append an audit entry. The actor is always the authenticated caller, never a
+ * value supplied in the request body.
+ */
+export function recordAudit(actor, input) {
+  const entry = {
+    id: nextId("aud"),
+    action: input.action,
+    entityType: input.entityType,
+    entityId: input.entityId,
+    entityLabel: input.entityLabel,
+    description: input.description,
+    actorId: actor?.id ?? "system",
+    actorName: actor?.fullName ?? "System",
+    result: "SUCCESS",
+    createdAt: new Date().toISOString(),
+    metadata: input.metadata,
+  };
+
+  db.auditLogs = [entry, ...db.auditLogs];
+  return entry;
+}

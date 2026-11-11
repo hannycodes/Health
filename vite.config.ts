@@ -5,13 +5,11 @@ import tailwindcss from "@tailwindcss/vite";
 import react from "@vitejs/plugin-react";
 import { defineConfig } from "vitest/config";
 
-import { apiPlugin } from "./server/api";
-
 const rootDir = path.dirname(fileURLToPath(import.meta.url));
 
 // https://vite.dev/config/
 export default defineConfig({
-  plugins: [react(), tailwindcss(), apiPlugin()],
+  plugins: [react(), tailwindcss()],
   resolve: {
     alias: {
       "@": path.resolve(rootDir, "./src"),
@@ -19,12 +17,17 @@ export default defineConfig({
   },
   server: {
     port: 5173,
-    // The clinical AI gateway (`npm run dev:ai`) keeps the provider key
-    // server-side and is proxied so the browser only talks to its own origin.
     proxy: {
+      // The clinical AI gateway (`npm run dev:ai`) keeps the provider key
+      // server-side; the more specific prefix must come first.
       "/api/ai": {
         target: "http://127.0.0.1:8787",
         changeOrigin: false,
+      },
+      // The one API lives in server/ (Express, port 8000). Run `npm run api`.
+      "/api": {
+        target: process.env.VITE_API_PROXY_TARGET ?? "http://localhost:8000",
+        changeOrigin: true,
       },
     },
   },
