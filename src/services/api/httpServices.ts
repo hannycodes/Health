@@ -1,25 +1,44 @@
 import type {
+  AccountStatus,
+  AdministratorInvitation,
+  AnalyticsFilter,
   Appointment,
   AppointmentFilter,
   AppointmentStatus,
   AppointmentWithDetails,
+  AuditLog,
+  AuditLogFilter,
   AuthSession,
   CreateAppointmentInput,
   Doctor,
   DoctorAvailability,
+  ForgotPasswordResponse,
+  GrowthPoint,
   Hospital,
+  HospitalAdminWithHospital,
   HospitalApprovalStatus,
   HospitalCapacity,
+  InvitationResult,
   LoginCredentials,
   MedicalRecord,
   Notification,
   Patient,
+  PatientRegistrationRequest,
   Payment,
+  PlatformSettings,
+  PlatformSummary,
+  PlatformUser,
+  PlatformUserFilter,
+  RegistrationResponse,
   User,
 } from "@/types";
 import type {
   AINavigatorService,
+  AdminService,
+  AdministratorFilter,
+  AnalyticsService,
   AppointmentService,
+  AuditLogService,
   AuthService,
   DoctorFilter,
   DoctorService,
@@ -30,6 +49,8 @@ import type {
   PatientService,
   PaymentService,
   ServiceContainer,
+  SettingsService,
+  UserService,
 } from "@/services/interfaces";
 import { clearSession, readSession, writeSession } from "@/lib/session";
 import { httpClient } from "@/lib/http";
@@ -45,9 +66,30 @@ import { httpClient } from "@/lib/http";
 
 class HttpAuthService implements AuthService {
   async login(credentials: LoginCredentials): Promise<AuthSession> {
-    const { data } = await httpClient.post<AuthSession>("/auth/login", credentials);
-    writeSession(data);
+    const { remember = true, ...body } = credentials;
+    const { data } = await httpClient.post<AuthSession>("/auth/login", body);
+    writeSession(data, remember);
     return data;
+  }
+
+  async registerPatient(
+    body: PatientRegistrationRequest,
+  ): Promise<RegistrationResponse> {
+    const { data } = await httpClient.post<RegistrationResponse>(
+      "/auth/register",
+      body,
+    );
+    return data;
+  }
+
+  async forgotPassword(email: string): Promise<ForgotPasswordResponse> {
+    // The real backend always answers generically and never returns a token.
+    await httpClient.post("/auth/forgot-password", { email });
+    return {};
+  }
+
+  async resetPassword(token: string, newPassword: string): Promise<void> {
+    await httpClient.post("/auth/reset-password", { token, newPassword });
   }
 
   async logout(): Promise<void> {
@@ -167,6 +209,34 @@ class HttpHospitalService implements HospitalService {
     const { data } = await httpClient.patch<Hospital>(`/hospitals/${id}/approval`, {
       status,
     });
+    return data;
+  }
+
+  async approve(id: string): Promise<Hospital> {
+    return this.setApprovalStatus(id, "APPROVED");
+  }
+
+  async reject(id: string, reason: string): Promise<Hospital> {
+    const { data } = await httpClient.patch<Hospital>(
+      `/hospitals/${id}/approval`,
+      { status: "REJECTED", reason },
+    );
+    return data;
+  }
+
+  async suspend(id: string, reason: string): Promise<Hospital> {
+    const { data } = await httpClient.patch<Hospital>(
+      `/hospitals/${id}/approval`,
+      { status: "SUSPENDED", reason },
+    );
+    return data;
+  }
+
+  async reactivate(id: string): Promise<Hospital> {
+    const { data } = await httpClient.patch<Hospital>(
+      `/hospitals/${id}/approval`,
+      { status: "APPROVED", reactivate: true },
+    );
     return data;
   }
 
@@ -336,9 +406,129 @@ class HttpNotificationService implements NotificationService {
   }
 }
 
+class HttpUserService implements UserService {
+  async list(filter?: PlatformUserFilter): Promise<PlatformUser[]> {
+    const { data } = await httpClient.get<PlatformUser[]>("/admin/users", {
+      params: filter,
+    });
+    return data;
+  }
+
+  async getById(id: string): Promise<PlatformUser | null> {
+    const { data } = await httpClient.get<PlatformUser>(`/admin/users/${id}`);
+    return data;
+  }
+
+  async setStatus(
+    id: string,
+    status: AccountStatus,
+    reason?: string,
+  ): Promise<PlatformUser> {
+    const { data } = await httpClient.patch<PlatformUser>(
+      `/admin/users/${id}/status`,
+      { status, reason },
+    );
+    return data;
+  }
+}
+
+class HttpAdminService implements AdminService {
+  async list(filter?: AdministratorFilter): Promise<HospitalAdminWithHospital[]> {
+    const { data } = await httpClient.get<HospitalAdminWithHospital[]>(
+      "/admin/administrators",
+      { params: filter },
+    );
+    return data;
+  }
+
+  async getById(id: string): Promise<HospitalAdminWithHospital | null> {
+    const { data } = await httpClient.get<HospitalAdminWithHospital>(
+      `/admin/administrators/${id}`,
+    );
+    return data;
+  }
+
+  async invite(input: AdministratorInvitation): Promise<InvitationResult> {
+    const { data } = await httpClient.post<InvitationResult>(
+      "/admin/administrators/invite",
+      input,
+    );
+    return data;
+  }
+
+  async reassign(
+    id: string,
+    hospitalId: string,
+  ): Promise<HospitalAdminWithHospital> {
+    const { data } = await httpClient.patch<HospitalAdminWithHospital>(
+      `/admin/administrators/${id}/hospital`,
+      { hospitalId },
+    );
+    return data;
+  }
+
+  async setStatus(
+    id: string,
+    status: AccountStatus,
+    reason?: string,
+  ): Promise<HospitalAdminWithHospital> {
+    const { data } = await httpClient.patch<HospitalAdminWithHospital>(
+      `/admin/administrators/${id}/status`,
+      { status, reason },
+    );
+    return data;
+  }
+}
+
+class HttpAuditLogService implements AuditLogService {
+  async list(filter?: AuditLogFilter): Promise<AuditLog[]> {
+    const { data } = await httpClient.get<AuditLog[]>("/admin/audit-logs", {
+      params: filter,
+    });
+    return data;
+  }
+}
+
+class HttpAnalyticsService implements AnalyticsService {
+  async getSummary(): Promise<PlatformSummary> {
+    const { data } = await httpClient.get<PlatformSummary>(
+      "/admin/analytics/summary",
+    );
+    return data;
+  }
+
+  async getGrowth(filter: AnalyticsFilter): Promise<GrowthPoint[]> {
+    const { data } = await httpClient.get<GrowthPoint[]>(
+      "/admin/analytics/growth",
+      { params: filter },
+    );
+    return data;
+  }
+}
+
+class HttpSettingsService implements SettingsService {
+  async get(): Promise<PlatformSettings> {
+    const { data } = await httpClient.get<PlatformSettings>("/admin/settings");
+    return data;
+  }
+
+  async update(patch: Partial<PlatformSettings>): Promise<PlatformSettings> {
+    const { data } = await httpClient.patch<PlatformSettings>(
+      "/admin/settings",
+      patch,
+    );
+    return data;
+  }
+}
+
 export function createHttpServices(): ServiceContainer {
   return {
     auth: new HttpAuthService(),
+    users: new HttpUserService(),
+    administrators: new HttpAdminService(),
+    auditLogs: new HttpAuditLogService(),
+    analytics: new HttpAnalyticsService(),
+    settings: new HttpSettingsService(),
     patients: new HttpPatientService(),
     doctors: new HttpDoctorService(),
     hospitals: new HttpHospitalService(),

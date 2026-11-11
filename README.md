@@ -107,18 +107,22 @@ src/
 ## What is implemented and what is not
 
 Implemented: official logo integration, custom stethoscope favicon, public landing page,
-design system, brand/theme, shared layouts and navigation, auth + role guards, patient
-screens (dashboard, hospitals, doctors, AI navigator, appointments, medical history,
-profile), appointment booking/cancel flow, shared appointment service with cross-role
-visibility, seeded demo data, tests.
+design system, brand/theme, shared layouts and navigation, shared authentication (login,
+patient registration, forgot/reset password, pending-account states) with session
+handling, role-based routing and guards, patient screens (dashboard, hospitals, doctors,
+AI navigator, appointments, medical history, profile), appointment booking/cancel flow,
+shared appointment service with cross-role visibility, the Super Admin portal
+(platform dashboard, hospital approvals, user and administrator management, analytics,
+read-only audit log, notifications, settings), seeded demo data, tests.
 
-Public route: `/` renders the landing page. Authenticated demo routes live under
-`/patient`, `/doctor`, `/hospital-admin` and `/super-admin`, and `/login` is the single
-sign-in entry point used by every landing-page call to action.
+Public routes: `/` renders the landing page, and `/login`, `/register`,
+`/forgot-password`, `/reset-password`, `/account-pending` and `/unauthorized` make up the
+shared authentication flow. Authenticated demo routes live under `/patient`, `/doctor`,
+`/hospital-admin` and `/admin` (the previous `/super-admin` URLs redirect to `/admin`).
 
-Scaffolded for the feature owners: doctor, hospital admin and super admin screens render
-a `ScaffoldPage` placeholder inside their real layout and navigation. See
-`FRONTEND_TASK_ASSIGNMENTS.md`.
+Scaffolded for the feature owners: doctor and hospital admin screens render a
+`ScaffoldPage` placeholder inside their real layout and navigation; the Super Admin
+portal is fully implemented. See `FRONTEND_TASK_ASSIGNMENTS.md`.
 
 Backend endpoints, real authentication, AI triage and online payment are **not** built.
 The HTTP adapters in `src/services/api/httpServices.ts` are provisional placeholders.

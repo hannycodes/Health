@@ -1,22 +1,37 @@
 import type {
   AIRecommendation,
   AITriageInput,
+  AccountStatus,
+  AdministratorInvitation,
+  AnalyticsFilter,
   Appointment,
   AppointmentFilter,
   AppointmentStatus,
   AppointmentWithDetails,
+  AuditLog,
+  AuditLogFilter,
   AuthSession,
   CreateAppointmentInput,
   Doctor,
   DoctorAvailability,
+  ForgotPasswordResponse,
+  GrowthPoint,
   Hospital,
+  HospitalAdminWithHospital,
   HospitalApprovalStatus,
   HospitalCapacity,
+  InvitationResult,
   LoginCredentials,
   MedicalRecord,
   Notification,
   Patient,
+  PatientRegistrationRequest,
   Payment,
+  PlatformSettings,
+  PlatformSummary,
+  PlatformUser,
+  PlatformUserFilter,
+  RegistrationResponse,
   Specialty,
   User,
 } from "@/types";
@@ -31,10 +46,15 @@ import type {
 
 export interface AuthService {
   login(credentials: LoginCredentials): Promise<AuthSession>;
+  registerPatient(
+    data: PatientRegistrationRequest,
+  ): Promise<RegistrationResponse>;
   logout(): Promise<void>;
   /** Synchronous session read for the auth provider's initial render. */
   getSession(): AuthSession | null;
   getCurrentUser(): Promise<User | null>;
+  forgotPassword(email: string): Promise<ForgotPasswordResponse>;
+  resetPassword(token: string, newPassword: string): Promise<void>;
 }
 
 export interface PatientService {
@@ -92,6 +112,11 @@ export interface HospitalService {
     id: string,
     status: HospitalApprovalStatus,
   ): Promise<Hospital>;
+  /** Approval workflow actions; each is audited by the backend. */
+  approve(id: string): Promise<Hospital>;
+  reject(id: string, reason: string): Promise<Hospital>;
+  suspend(id: string, reason: string): Promise<Hospital>;
+  reactivate(id: string): Promise<Hospital>;
   updateCapacity(
     id: string,
     patch: Partial<HospitalCapacity>,
@@ -142,8 +167,63 @@ export interface NotificationService {
   unreadCount(userId: string): Promise<number>;
 }
 
+/* -------------------------------------------------------------------------- */
+/*                          Platform administration                           */
+/* -------------------------------------------------------------------------- */
+
+export interface UserService {
+  /** Platform accounts joined with their hospital association. */
+  list(filter?: PlatformUserFilter): Promise<PlatformUser[]>;
+  getById(id: string): Promise<PlatformUser | null>;
+  setStatus(
+    id: string,
+    status: AccountStatus,
+    reason?: string,
+  ): Promise<PlatformUser>;
+}
+
+export interface AdministratorFilter {
+  search?: string;
+  status?: AccountStatus;
+  hospitalId?: string;
+}
+
+export interface AdminService {
+  list(filter?: AdministratorFilter): Promise<HospitalAdminWithHospital[]>;
+  getById(id: string): Promise<HospitalAdminWithHospital | null>;
+  invite(input: AdministratorInvitation): Promise<InvitationResult>;
+  reassign(
+    id: string,
+    hospitalId: string,
+  ): Promise<HospitalAdminWithHospital>;
+  setStatus(
+    id: string,
+    status: AccountStatus,
+    reason?: string,
+  ): Promise<HospitalAdminWithHospital>;
+}
+
+export interface AuditLogService {
+  list(filter?: AuditLogFilter): Promise<AuditLog[]>;
+}
+
+export interface AnalyticsService {
+  getSummary(): Promise<PlatformSummary>;
+  getGrowth(filter: AnalyticsFilter): Promise<GrowthPoint[]>;
+}
+
+export interface SettingsService {
+  get(): Promise<PlatformSettings>;
+  update(patch: Partial<PlatformSettings>): Promise<PlatformSettings>;
+}
+
 export interface ServiceContainer {
   auth: AuthService;
+  users: UserService;
+  administrators: AdminService;
+  auditLogs: AuditLogService;
+  analytics: AnalyticsService;
+  settings: SettingsService;
   patients: PatientService;
   doctors: DoctorService;
   hospitals: HospitalService;

@@ -1,5 +1,12 @@
 import type { ServiceContainer } from "@/services/interfaces";
 import { MockAppointmentService } from "./appointmentService";
+import {
+  MockAdminService,
+  MockAnalyticsService,
+  MockAuditLogService,
+  MockSettingsService,
+  MockUserService,
+} from "./adminServices";
 import { MockAuthService } from "./authService";
 import {
   MockDoctorService,
@@ -21,6 +28,11 @@ import {
  */
 export const mockServices: ServiceContainer = {
   auth: new MockAuthService(),
+  users: new MockUserService(),
+  administrators: new MockAdminService(),
+  auditLogs: new MockAuditLogService(),
+  analytics: new MockAnalyticsService(),
+  settings: new MockSettingsService(),
   patients: new MockPatientService(),
   doctors: new MockDoctorService(),
   hospitals: new MockHospitalService(),

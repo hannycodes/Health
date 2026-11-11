@@ -11,7 +11,7 @@ export function AuthLayout() {
       </header>
 
       <main className="flex flex-1 items-center justify-center px-4 py-8">
-        <div className="w-full max-w-md">
+        <div className="w-full max-w-xl">
           <Outlet />
         </div>
       </main>

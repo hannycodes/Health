@@ -42,7 +42,25 @@ export const SPECIALTIES = [
 ] as const;
 export type Specialty = (typeof SPECIALTIES)[number];
 
-export type HospitalApprovalStatus = "PENDING" | "APPROVED" | "REJECTED";
+export const HOSPITAL_APPROVAL_STATUSES = [
+  "PENDING",
+  "APPROVED",
+  "REJECTED",
+  "SUSPENDED",
+] as const;
+export type HospitalApprovalStatus = (typeof HOSPITAL_APPROVAL_STATUSES)[number];
+
+export const HOSPITAL_TYPES = ["GENERAL", "SPECIALTY", "REFERRAL", "CLINIC"] as const;
+export type HospitalType = (typeof HOSPITAL_TYPES)[number];
+
+/** Platform account lifecycle. `status` is optional so existing profiles stay valid. */
+export const ACCOUNT_STATUSES = [
+  "ACTIVE",
+  "PENDING",
+  "SUSPENDED",
+  "DISABLED",
+] as const;
+export type AccountStatus = (typeof ACCOUNT_STATUSES)[number];
 
 export type UrgencyLevel = "LOW" | "MODERATE" | "HIGH" | "EMERGENCY";
 
@@ -65,7 +83,15 @@ export interface User {
   role: Role;
   phone?: string;
   avatarUrl?: string;
+  /** Defaults to ACTIVE when the backend has not supplied a status yet. */
+  status?: AccountStatus;
   createdAt: string;
+}
+
+/** A platform user joined with the hospital association used by the admin portal. */
+export interface PlatformUser extends User {
+  hospitalId?: string;
+  hospitalName?: string;
 }
 
 export interface Patient extends User {
@@ -94,6 +120,11 @@ export interface HospitalAdmin extends User {
   hospitalId: string;
 }
 
+/** Administrator joined with the hospital name needed by the admin portal. */
+export interface HospitalAdminWithHospital extends HospitalAdmin {
+  hospitalName: string;
+}
+
 export interface SuperAdmin extends User {
   role: "SUPER_ADMIN";
 }
@@ -110,6 +141,23 @@ export interface HospitalCapacity {
   occupiedIcuBeds: number;
 }
 
+export type HospitalDocumentType =
+  | "LICENSE"
+  | "ACCREDITATION"
+  | "TAX_CERTIFICATE"
+  | "OTHER";
+
+/**
+ * Metadata for a verification document. Deliberately carries no public URL:
+ * private documents are served through an authenticated backend endpoint.
+ */
+export interface HospitalDocument {
+  id: string;
+  name: string;
+  type: HospitalDocumentType;
+  uploadedAt: string;
+}
+
 export interface Hospital {
   id: string;
   name: string;
@@ -124,6 +172,20 @@ export interface Hospital {
   approvalStatus: HospitalApprovalStatus;
   capacity: HospitalCapacity;
   createdAt: string;
+
+  /* Platform application fields (optional until the backend contract lands). */
+  region?: string;
+  website?: string;
+  hospitalType?: HospitalType;
+  representativeName?: string;
+  representativeEmail?: string;
+  representativePhone?: string;
+  submittedAt?: string;
+  reviewedAt?: string;
+  reviewedBy?: string;
+  rejectionReason?: string;
+  suspensionReason?: string;
+  documents?: HospitalDocument[];
 }
 
 /* -------------------------------------------------------------------------- */
@@ -284,11 +346,40 @@ export interface AuthSession {
   hospitalId?: string;
   /** Mock-only token. The real backend will issue a JWT later. */
   token: string;
+  /** ISO timestamp used to surface expired sessions in the UI. */
+  expiresAt?: string;
 }
 
 export interface LoginCredentials {
   email: string;
   password: string;
+  /** When false the mock keeps the session in sessionStorage only. */
+  remember?: boolean;
+}
+
+export interface PatientRegistrationRequest {
+  fullName: string;
+  email: string;
+  phone: string;
+  dateOfBirth?: string;
+  gender?: Gender;
+  password: string;
+  acceptedTerms: boolean;
+  acceptedPrivacy: boolean;
+}
+
+export interface RegistrationResponse {
+  user: User;
+  /** True when the backend requires e-mail verification before first login. */
+  requiresVerification?: boolean;
+}
+
+export interface ForgotPasswordResponse {
+  /**
+   * MOCK ONLY. A real backend never returns a reset token to the browser; the
+   * mock returns one so the reset screen is testable without an e-mail server.
+   */
+  devResetToken?: string;
 }
 
 export interface DemoAccount {
@@ -297,4 +388,121 @@ export interface DemoAccount {
   password: string;
   role: Role;
   description: string;
+}
+
+/* -------------------------------------------------------------------------- */
+/*                          Platform administration                           */
+/* -------------------------------------------------------------------------- */
+
+export const AUDIT_ACTIONS = [
+  "HOSPITAL_REGISTERED",
+  "HOSPITAL_APPROVED",
+  "HOSPITAL_REJECTED",
+  "HOSPITAL_SUSPENDED",
+  "HOSPITAL_REACTIVATED",
+  "ADMINISTRATOR_INVITED",
+  "ADMINISTRATOR_REASSIGNED",
+  "USER_STATUS_CHANGED",
+  "ROLE_ASSIGNED",
+  "SETTINGS_UPDATED",
+] as const;
+export type AuditAction = (typeof AUDIT_ACTIONS)[number];
+
+export type AuditResult = "SUCCESS" | "FAILED";
+
+export type AuditEntityType = "HOSPITAL" | "USER" | "SETTINGS" | "PLATFORM";
+
+export interface AuditLog {
+  id: string;
+  action: AuditAction;
+  entityType: AuditEntityType;
+  entityId: string;
+  entityLabel: string;
+  description: string;
+  /** Actor identity is derived server-side, never from the client form. */
+  actorId: string;
+  actorName: string;
+  result: AuditResult;
+  createdAt: string;
+  metadata?: Record<string, string>;
+}
+
+export interface AuditLogFilter {
+  search?: string;
+  action?: AuditAction;
+  from?: string;
+  to?: string;
+}
+
+export interface PlatformSettings {
+  platformName: string;
+  platformDescription: string;
+  supportEmail: string;
+  supportPhone: string;
+  patientRegistrationEnabled: boolean;
+  hospitalRegistrationEnabled: boolean;
+  requireHospitalVerificationDocuments: boolean;
+  regions: string[];
+  hospitalTypes: HospitalType[];
+  specialties: Specialty[];
+  sessionTimeoutMinutes: number;
+  requireStrongPasswords: boolean;
+  adminSessionNote: string;
+  updatedAt: string;
+  updatedBy?: string;
+}
+
+export interface PlatformUserFilter {
+  role?: Role;
+  status?: AccountStatus;
+  search?: string;
+  hospitalId?: string;
+}
+
+export interface AdministratorInvitation {
+  fullName: string;
+  email: string;
+  phone?: string;
+  hospitalId: string;
+}
+
+export interface InvitationResult {
+  administrator: HospitalAdmin;
+  /** MOCK ONLY: a real backend e-mails the invitation instead of returning it. */
+  temporaryPassword?: string;
+}
+
+export type AnalyticsRange = "7d" | "30d" | "90d" | "custom";
+
+export interface AnalyticsFilter {
+  range: AnalyticsRange;
+  from?: string;
+  to?: string;
+}
+
+export interface PlatformSummary {
+  totalHospitals: number;
+  approvedHospitals: number;
+  pendingHospitals: number;
+  rejectedHospitals: number;
+  suspendedHospitals: number;
+  totalUsers: number;
+  totalPatients: number;
+  totalDoctors: number;
+  totalAdministrators: number;
+  totalSuperAdmins: number;
+  totalAppointments: number;
+  completedAppointments: number;
+  cancelledAppointments: number;
+  upcomingAppointments: number;
+}
+
+export interface GrowthPoint {
+  label: string;
+  hospitals: number;
+  approvedHospitals: number;
+  patients: number;
+  doctors: number;
+  administrators: number;
+  appointments: number;
 }

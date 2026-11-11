@@ -1,20 +1,29 @@
 import axios, { AxiosError, type AxiosInstance } from "axios";
-import { AUTH_STORAGE_KEY } from "@/constants";
+import {
+  AUTH_SESSION_STORAGE_KEY,
+  AUTH_STORAGE_KEY,
+  SESSION_EXPIRED_EVENT,
+} from "@/constants";
+import { clearSession } from "@/lib/session";
 
 export interface ApiErrorShape {
   status: number;
   message: string;
+  /** Stable machine-readable code supplied by the backend, when available. */
+  code?: string;
   details?: unknown;
 }
 
 export class ApiError extends Error implements ApiErrorShape {
   status: number;
+  code?: string;
   details?: unknown;
 
-  constructor({ status, message, details }: ApiErrorShape) {
+  constructor({ status, message, code, details }: ApiErrorShape) {
     super(message);
     this.name = "ApiError";
     this.status = status;
+    this.code = code;
     this.details = details;
   }
 }
@@ -51,7 +60,7 @@ httpClient.interceptors.request.use((config) => {
 
 httpClient.interceptors.response.use(
   (response) => response,
-  (error: AxiosError<{ message?: string; detail?: string }>) => {
+  (error: AxiosError<{ message?: string; detail?: string; code?: string }>) => {
     const status = error.response?.status ?? 0;
     const message =
       error.response?.data?.message ??
@@ -59,8 +68,29 @@ httpClient.interceptors.response.use(
       error.message ??
       "Unexpected network error";
 
+    // A rejected session is cleared once, and the AuthProvider is told so every
+    // protected route can redirect to /login with the intended destination.
+    if (status === 401) {
+      try {
+        const hadSession =
+          Boolean(window.localStorage.getItem(AUTH_STORAGE_KEY)) ||
+          Boolean(window.sessionStorage.getItem(AUTH_SESSION_STORAGE_KEY));
+        clearSession();
+        if (hadSession) {
+          window.dispatchEvent(new Event(SESSION_EXPIRED_EVENT));
+        }
+      } catch {
+        // Storage access can fail in private mode; ignore.
+      }
+    }
+
     return Promise.reject(
-      new ApiError({ status, message, details: error.response?.data }),
+      new ApiError({
+        status,
+        message,
+        code: error.response?.data?.code,
+        details: error.response?.data,
+      }),
     );
   },
 );

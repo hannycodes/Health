@@ -22,6 +22,12 @@ export const patientService = services.patients;
 export const paymentService = services.payments;
 export const aiNavigatorService = services.aiNavigator;
 
+export const userService = services.users;
+export const adminService = services.administrators;
+export const auditLogService = services.auditLogs;
+export const analyticsService = services.analytics;
+export const settingsService = services.settings;
+
 export { demoDb };
 
 export type { ServiceContainer };

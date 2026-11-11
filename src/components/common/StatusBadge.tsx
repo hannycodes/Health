@@ -1,9 +1,12 @@
 import {
+  ACCOUNT_STATUS_META,
   APPOINTMENT_STATUS_META,
+  HOSPITAL_APPROVAL_META,
   PAYMENT_STATUS_META,
   type StatusMeta,
 } from "@/constants";
 import type {
+  AccountStatus,
   AppointmentStatus,
   HospitalApprovalStatus,
   PaymentStatus,
@@ -18,16 +21,11 @@ const TONE_CLASSES: Record<StatusMeta["tone"], string> = {
   neutral: "border-border bg-muted text-muted-foreground",
 };
 
-const HOSPITAL_META: Record<HospitalApprovalStatus, StatusMeta> = {
-  APPROVED: { label: "Approved", variant: "secondary", tone: "success" },
-  PENDING: { label: "Pending review", variant: "outline", tone: "warning" },
-  REJECTED: { label: "Rejected", variant: "destructive", tone: "danger" },
-};
-
 type StatusBadgeProps =
   | { kind: "appointment"; value: AppointmentStatus; className?: string }
   | { kind: "payment"; value: PaymentStatus; className?: string }
-  | { kind: "hospital"; value: HospitalApprovalStatus; className?: string };
+  | { kind: "hospital"; value: HospitalApprovalStatus; className?: string }
+  | { kind: "account"; value: AccountStatus; className?: string };
 
 /** Single source of truth for status colours and labels. */
 export function StatusBadge(props: StatusBadgeProps) {
@@ -36,7 +34,9 @@ export function StatusBadge(props: StatusBadgeProps) {
       ? APPOINTMENT_STATUS_META[props.value]
       : props.kind === "payment"
         ? PAYMENT_STATUS_META[props.value]
-        : HOSPITAL_META[props.value];
+        : props.kind === "hospital"
+          ? HOSPITAL_APPROVAL_META[props.value]
+          : ACCOUNT_STATUS_META[props.value];
 
   return (
     <span

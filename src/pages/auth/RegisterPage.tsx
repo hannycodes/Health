@@ -1,0 +1,292 @@
+import { useState } from "react";
+import { Link } from "react-router-dom";
+import { Controller, useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
+import { CheckCircle2, UserPlus } from "lucide-react";
+import { toast } from "sonner";
+
+import { PasswordField } from "@/components/auth/PasswordField";
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { useAuth } from "@/hooks/useAuth";
+import { getApiErrorMessage } from "@/lib/http";
+
+const registerSchema = z
+  .object({
+    fullName: z.string().min(3, "Enter your full name"),
+    email: z.string().min(1, "Email is required").email("Enter a valid email"),
+    phone: z
+      .string()
+      .min(7, "Enter a valid phone number")
+      .regex(/^[+0-9][0-9\s-]{6,18}$/, "Use digits, spaces, + or -"),
+    dateOfBirth: z.string().optional(),
+    gender: z.enum(["MALE", "FEMALE", "OTHER"]).optional(),
+    password: z
+      .string()
+      .min(8, "Use at least 8 characters")
+      .regex(/[A-Za-z]/, "Include at least one letter")
+      .regex(/[0-9]/, "Include at least one number"),
+    confirmPassword: z.string().min(1, "Confirm your password"),
+    acceptedTerms: z
+      .boolean()
+      .refine((value) => value, "You must accept the terms of service"),
+    acceptedPrivacy: z
+      .boolean()
+      .refine((value) => value, "You must acknowledge the privacy notice"),
+  })
+  .refine((values) => values.password === values.confirmPassword, {
+    path: ["confirmPassword"],
+    message: "Passwords do not match",
+  });
+
+type RegisterValues = z.infer<typeof registerSchema>;
+
+export function RegisterPage() {
+  const { registerPatient } = useAuth();
+  const [createdEmail, setCreatedEmail] = useState<string | null>(null);
+
+  const form = useForm<RegisterValues>({
+    resolver: zodResolver(registerSchema),
+    defaultValues: {
+      fullName: "",
+      email: "",
+      phone: "",
+      dateOfBirth: "",
+      gender: undefined,
+      password: "",
+      confirmPassword: "",
+      acceptedTerms: false,
+      acceptedPrivacy: false,
+    },
+  });
+
+  async function onSubmit(values: RegisterValues) {
+    try {
+      const result = await registerPatient({
+        fullName: values.fullName,
+        email: values.email,
+        phone: values.phone,
+        dateOfBirth: values.dateOfBirth || undefined,
+        gender: values.gender,
+        password: values.password,
+        acceptedTerms: values.acceptedTerms,
+        acceptedPrivacy: values.acceptedPrivacy,
+      });
+      setCreatedEmail(result.user.email);
+      toast.success("Your patient account has been created.");
+    } catch (error) {
+      toast.error(getApiErrorMessage(error));
+    }
+  }
+
+  if (createdEmail) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-xl">
+            <CheckCircle2 className="size-5 text-emerald-600" aria-hidden="true" />
+            Account created
+          </CardTitle>
+          <CardDescription>
+            We created your MyHealth patient account for {createdEmail}.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <p className="text-muted-foreground text-sm">
+            Sign in with the password you chose to reach your patient dashboard.
+            {/** The mock backend verifies accounts immediately; a real backend
+             * may send a verification e-mail first. */}
+          </p>
+          <Button asChild className="w-full">
+            <Link to="/login">Continue to sign in</Link>
+          </Button>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-xl">Create your patient account</CardTitle>
+        <CardDescription>
+          Doctors, hospital administrators and platform staff are onboarded
+          through their organisation — not this form.
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4" noValidate>
+          <div className="space-y-1.5">
+            <Label htmlFor="fullName">Full name</Label>
+            <Input
+              id="fullName"
+              autoComplete="name"
+              placeholder="e.g. Abebe Tesfaye"
+              aria-invalid={!!form.formState.errors.fullName}
+              {...form.register("fullName")}
+            />
+            {form.formState.errors.fullName && (
+              <p className="text-destructive text-xs">
+                {form.formState.errors.fullName.message}
+              </p>
+            )}
+          </div>
+
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="space-y-1.5">
+              <Label htmlFor="email">Email</Label>
+              <Input
+                id="email"
+                type="email"
+                autoComplete="email"
+                placeholder="you@example.com"
+                aria-invalid={!!form.formState.errors.email}
+                {...form.register("email")}
+              />
+              {form.formState.errors.email && (
+                <p className="text-destructive text-xs">
+                  {form.formState.errors.email.message}
+                </p>
+              )}
+            </div>
+
+            <div className="space-y-1.5">
+              <Label htmlFor="phone">Phone number</Label>
+              <Input
+                id="phone"
+                type="tel"
+                autoComplete="tel"
+                placeholder="+251 911 234 567"
+                aria-invalid={!!form.formState.errors.phone}
+                {...form.register("phone")}
+              />
+              {form.formState.errors.phone && (
+                <p className="text-destructive text-xs">
+                  {form.formState.errors.phone.message}
+                </p>
+              )}
+            </div>
+
+            <div className="space-y-1.5">
+              <Label htmlFor="dateOfBirth">Date of birth</Label>
+              <Input
+                id="dateOfBirth"
+                type="date"
+                max={new Date().toISOString().slice(0, 10)}
+                {...form.register("dateOfBirth")}
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <Label htmlFor="gender">Gender (optional)</Label>
+              <Controller
+                control={form.control}
+                name="gender"
+                render={({ field }) => (
+                  <Select
+                    value={field.value ?? ""}
+                    onValueChange={(value) =>
+                      field.onChange(value === "" ? undefined : value)
+                    }
+                  >
+                    <SelectTrigger id="gender">
+                      <SelectValue placeholder="Prefer not to say" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="MALE">Male</SelectItem>
+                      <SelectItem value="FEMALE">Female</SelectItem>
+                      <SelectItem value="OTHER">Other</SelectItem>
+                    </SelectContent>
+                  </Select>
+                )}
+              />
+            </div>
+          </div>
+
+          <PasswordField
+            id="password"
+            label="Password"
+            autoComplete="new-password"
+            hint="At least 8 characters, including a letter and a number."
+            error={form.formState.errors.password?.message}
+            {...form.register("password")}
+          />
+          <PasswordField
+            id="confirmPassword"
+            label="Confirm password"
+            autoComplete="new-password"
+            error={form.formState.errors.confirmPassword?.message}
+            {...form.register("confirmPassword")}
+          />
+
+          <div className="space-y-3 rounded-lg border p-3">
+            <p className="text-sm font-medium">Consent</p>
+            <label className="flex items-start gap-2 text-sm">
+              <input
+                type="checkbox"
+                className="accent-primary mt-0.5 size-4 rounded border"
+                {...form.register("acceptedTerms")}
+              />
+              <span>
+                I accept the MyHealth terms of service.
+                {form.formState.errors.acceptedTerms && (
+                  <span className="text-destructive block text-xs">
+                    {form.formState.errors.acceptedTerms.message}
+                  </span>
+                )}
+              </span>
+            </label>
+            <label className="flex items-start gap-2 text-sm">
+              <input
+                type="checkbox"
+                className="accent-primary mt-0.5 size-4 rounded border"
+                {...form.register("acceptedPrivacy")}
+              />
+              <span>
+                I have read the privacy notice and consent to MyHealth handling
+                my health information for care coordination.
+                {form.formState.errors.acceptedPrivacy && (
+                  <span className="text-destructive block text-xs">
+                    {form.formState.errors.acceptedPrivacy.message}
+                  </span>
+                )}
+              </span>
+            </label>
+          </div>
+
+          <Button
+            type="submit"
+            className="w-full"
+            disabled={form.formState.isSubmitting}
+          >
+            <UserPlus className="size-4" />
+            {form.formState.isSubmitting ? "Creating account…" : "Create account"}
+          </Button>
+        </form>
+
+        <p className="text-muted-foreground mt-4 text-center text-sm">
+          Already registered?{" "}
+          <Link to="/login" className="text-primary font-medium hover:underline">
+            Sign in
+          </Link>
+        </p>
+      </CardContent>
+    </Card>
+  );
+}

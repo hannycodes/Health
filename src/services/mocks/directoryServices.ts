@@ -1,5 +1,6 @@
 import { ApiError } from "@/lib/http";
 import type {
+  AuditAction,
   Doctor,
   DoctorAvailability,
   Hospital,
@@ -16,6 +17,7 @@ import type {
   NotificationService,
   PatientService,
 } from "@/services/interfaces";
+import { recordAudit } from "./audit";
 import { pushNotification } from "./notifications";
 import { demoDb } from "./store";
 import { createId, respond } from "./utils";
@@ -169,6 +171,97 @@ export class MockDoctorService implements DoctorService {
 /*                                 Hospitals                                  */
 /* -------------------------------------------------------------------------- */
 
+function requireReason(reason: string, label: string) {
+  const trimmed = reason.trim();
+  if (trimmed.length < 10) {
+    throw new ApiError({
+      status: 400,
+      message: `Please provide ${label} of at least 10 characters.`,
+    });
+  }
+  return trimmed;
+}
+
+/**
+ * MOCK BACKEND: single place where hospital approval state changes, so the
+ * notification, audit entry and verification flag never drift apart.
+ */
+function transitionHospital(
+  id: string,
+  status: HospitalApprovalStatus,
+  options: {
+    auditAction: AuditAction;
+    allowFrom?: HospitalApprovalStatus[];
+    reason?: string;
+  },
+): Hospital {
+  let updated: Hospital | undefined;
+
+  demoDb.mutate((db) => {
+    const hospital = db.hospitals.find((item) => item.id === id);
+    if (!hospital) {
+      throw new ApiError({ status: 404, message: "Hospital not found." });
+    }
+
+    if (
+      options.allowFrom &&
+      !options.allowFrom.includes(hospital.approvalStatus)
+    ) {
+      throw new ApiError({
+        status: 409,
+        message: `This hospital is currently ${hospital.approvalStatus.toLowerCase()} and cannot be moved to ${status.toLowerCase()}.`,
+      });
+    }
+
+    const previous = hospital.approvalStatus;
+    const now = new Date().toISOString();
+
+    hospital.approvalStatus = status;
+    hospital.isVerified = status === "APPROVED";
+
+    if (status === "APPROVED") {
+      hospital.reviewedAt = now;
+      hospital.rejectionReason = undefined;
+      hospital.suspensionReason = undefined;
+    }
+    if (status === "REJECTED") {
+      hospital.reviewedAt = now;
+      hospital.rejectionReason = options.reason;
+    }
+    if (status === "SUSPENDED") {
+      hospital.suspensionReason = options.reason;
+    }
+
+    updated = { ...hospital };
+
+    const admin = db.hospitalAdmins.find((item) => item.hospitalId === id);
+    if (admin) {
+      pushNotification(db, {
+        userId: admin.id,
+        title: `Hospital ${status.toLowerCase()}`,
+        message: `${hospital.name} was ${status.toLowerCase()} by the platform team.`,
+        type: "APPROVAL",
+        link: "/hospital-admin/profile",
+      });
+    }
+
+    recordAudit(db, {
+      action: options.auditAction,
+      entityType: "HOSPITAL",
+      entityId: hospital.id,
+      entityLabel: hospital.name,
+      description: `Hospital status changed from ${previous} to ${status}.`,
+      metadata: {
+        from: previous,
+        to: status,
+        ...(options.reason ? { reason: options.reason } : {}),
+      },
+    });
+  });
+
+  return updated as Hospital;
+}
+
 export class MockHospitalService implements HospitalService {
   list(filter?: HospitalFilter): Promise<Hospital[]> {
     return respond(() => {
@@ -232,32 +325,57 @@ export class MockHospitalService implements HospitalService {
     status: HospitalApprovalStatus,
   ): Promise<Hospital> {
     return respond(() => {
-      let updated: Hospital | undefined;
+      const auditAction =
+        status === "APPROVED"
+          ? "HOSPITAL_APPROVED"
+          : status === "REJECTED"
+            ? "HOSPITAL_REJECTED"
+            : status === "SUSPENDED"
+              ? "HOSPITAL_SUSPENDED"
+              : "HOSPITAL_REGISTERED";
 
-      demoDb.mutate((db) => {
-        const hospital = db.hospitals.find((item) => item.id === id);
-        if (!hospital) {
-          throw new ApiError({ status: 404, message: "Hospital not found." });
-        }
-
-        hospital.approvalStatus = status;
-        hospital.isVerified = status === "APPROVED";
-        updated = { ...hospital };
-
-        const admin = db.hospitalAdmins.find((item) => item.hospitalId === id);
-        if (admin) {
-          pushNotification(db, {
-            userId: admin.id,
-            title: `Hospital ${status.toLowerCase()}`,
-            message: `${hospital.name} was ${status.toLowerCase()} by the platform team.`,
-            type: "APPROVAL",
-            link: "/hospital-admin/profile",
-          });
-        }
-      });
-
-      return updated as Hospital;
+      return transitionHospital(id, status, { auditAction });
     });
+  }
+
+  approve(id: string): Promise<Hospital> {
+    return respond(() =>
+      transitionHospital(id, "APPROVED", {
+        auditAction: "HOSPITAL_APPROVED",
+        allowFrom: ["PENDING", "REJECTED"],
+      }),
+    );
+  }
+
+  reject(id: string, reason: string): Promise<Hospital> {
+    return respond(() => {
+      const trimmed = requireReason(reason, "a rejection reason");
+      return transitionHospital(id, "REJECTED", {
+        auditAction: "HOSPITAL_REJECTED",
+        allowFrom: ["PENDING"],
+        reason: trimmed,
+      });
+    });
+  }
+
+  suspend(id: string, reason: string): Promise<Hospital> {
+    return respond(() => {
+      const trimmed = requireReason(reason, "a suspension reason");
+      return transitionHospital(id, "SUSPENDED", {
+        auditAction: "HOSPITAL_SUSPENDED",
+        allowFrom: ["APPROVED"],
+        reason: trimmed,
+      });
+    });
+  }
+
+  reactivate(id: string): Promise<Hospital> {
+    return respond(() =>
+      transitionHospital(id, "APPROVED", {
+        auditAction: "HOSPITAL_REACTIVATED",
+        allowFrom: ["SUSPENDED"],
+      }),
+    );
   }
 
   updateCapacity(

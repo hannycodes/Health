@@ -1,6 +1,7 @@
 import type {
   AIRecommendation,
   Appointment,
+  AuditLog,
   Doctor,
   DoctorAvailability,
   Hospital,
@@ -9,8 +10,24 @@ import type {
   Notification,
   Patient,
   Payment,
+  PlatformSettings,
   SuperAdmin,
 } from "@/types";
+
+/** MOCK ONLY — demo credentials. A real backend stores salted password hashes. */
+export interface DemoCredential {
+  userId: string;
+  email: string;
+  password: string;
+}
+
+/** MOCK ONLY — short-lived password reset requests. */
+export interface PasswordReset {
+  token: string;
+  userId: string;
+  createdAt: string;
+  expiresAt: string;
+}
 
 /**
  * Shape of the in-browser demo database.
@@ -32,4 +49,8 @@ export interface DemoDatabase {
   availability: DoctorAvailability[];
   notifications: Notification[];
   recommendations: AIRecommendation[];
+  credentials: DemoCredential[];
+  passwordResets: PasswordReset[];
+  auditLogs: AuditLog[];
+  settings: PlatformSettings;
 }

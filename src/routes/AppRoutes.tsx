@@ -1,4 +1,4 @@
-import type { RouteObject } from "react-router-dom";
+import { Navigate, type RouteObject } from "react-router-dom";
 
 import { AuthLayout } from "@/layouts/AuthLayout";
 import { DoctorLayout } from "@/layouts/DoctorLayout";
@@ -6,7 +6,11 @@ import { HospitalAdminLayout } from "@/layouts/HospitalAdminLayout";
 import { PatientLayout } from "@/layouts/PatientLayout";
 import { SuperAdminLayout } from "@/layouts/SuperAdminLayout";
 import { LandingPage } from "@/pages/LandingPage";
+import { AccountPendingPage } from "@/pages/auth/AccountPendingPage";
+import { ForgotPasswordPage } from "@/pages/auth/ForgotPasswordPage";
 import { LoginPage } from "@/pages/auth/LoginPage";
+import { RegisterPage } from "@/pages/auth/RegisterPage";
+import { ResetPasswordPage } from "@/pages/auth/ResetPasswordPage";
 import { PatientAiNavigator } from "@/pages/patient/PatientAiNavigator";
 import { PatientAppointments } from "@/pages/patient/PatientAppointments";
 import { PatientDashboard } from "@/pages/patient/PatientDashboard";
@@ -17,22 +21,43 @@ import { PatientProfile } from "@/pages/patient/PatientProfile";
 import { NotFoundPage } from "@/pages/shared/NotFoundPage";
 import { ScaffoldPage } from "@/pages/shared/ScaffoldPage";
 import { UnauthorizedPage } from "@/pages/shared/UnauthorizedPage";
+import { AdminActivityPage } from "@/pages/super-admin/AdminActivityPage";
+import { AdminAnalyticsPage } from "@/pages/super-admin/AdminAnalyticsPage";
+import { AdminDashboardPage } from "@/pages/super-admin/AdminDashboardPage";
+import { AdminDoctorsPage } from "@/pages/super-admin/AdminDoctorsPage";
+import { AdminHospitalsPage } from "@/pages/super-admin/AdminHospitalsPage";
+import { AdminNotificationsPage } from "@/pages/super-admin/AdminNotificationsPage";
+import { AdminPatientsPage } from "@/pages/super-admin/AdminPatientsPage";
+import { AdminSettingsPage } from "@/pages/super-admin/AdminSettingsPage";
+import { AdminUserDetailsPage } from "@/pages/super-admin/AdminUserDetailsPage";
+import { AdminUsersPage } from "@/pages/super-admin/AdminUsersPage";
+import { AdministratorsPage } from "@/pages/super-admin/AdministratorsPage";
+import { HospitalDetailsPage } from "@/pages/super-admin/HospitalDetailsPage";
+import { PendingHospitalsPage } from "@/pages/super-admin/PendingHospitalsPage";
 import { ProtectedRoute } from "./ProtectedRoute";
+import { RoleRedirect } from "./RoleRedirect";
 
 /**
  * Application route tree.
  *
- * Every authenticated group is wrapped in `ProtectedRoute` with the roles that
- * may enter it. Unbuilt screens render `ScaffoldPage` so their owner can drop
- * in a real page without touching this file's structure.
+ * Shared auth lives under `AuthLayout`; every authenticated group is wrapped in
+ * `ProtectedRoute` with the roles that may enter it. Unbuilt doctor and
+ * hospital-admin screens still render `ScaffoldPage` for their owners.
  */
 export const appRoutes: RouteObject[] = [
   { path: "/", element: <LandingPage /> },
   {
-    path: "/login",
     element: <AuthLayout />,
-    children: [{ index: true, element: <LoginPage /> }],
+    children: [
+      { path: "/login", element: <LoginPage /> },
+      { path: "/register", element: <RegisterPage /> },
+      { path: "/forgot-password", element: <ForgotPasswordPage /> },
+      { path: "/reset-password", element: <ResetPasswordPage /> },
+      { path: "/account-pending", element: <AccountPendingPage /> },
+    ],
   },
+  { path: "/dashboard", element: <RoleRedirect /> },
+  { path: "/unauthorized", element: <UnauthorizedPage /> },
   {
     element: <ProtectedRoute allowedRoles={["PATIENT"]} />,
     children: [
@@ -199,66 +224,29 @@ export const appRoutes: RouteObject[] = [
     element: <ProtectedRoute allowedRoles={["SUPER_ADMIN"]} />,
     children: [
       {
-        path: "/super-admin",
+        path: "/admin",
         element: <SuperAdminLayout />,
         children: [
-          {
-            index: true,
-            element: (
-              <ScaffoldPage
-                title="Platform dashboard"
-                description="Network-wide hospitals, users and appointment volume."
-                breadcrumbs={[{ label: "Super admin" }]}
-                owner="Auth & super admin owner"
-              />
-            ),
-          },
-          {
-            path: "hospitals",
-            element: (
-              <ScaffoldPage
-                title="Hospitals"
-                description="All hospitals registered on MyHealth."
-                breadcrumbs={[
-                  { label: "Super admin", to: "/super-admin" },
-                  { label: "Hospitals" },
-                ]}
-                owner="Auth & super admin owner"
-              />
-            ),
-          },
-          {
-            path: "users",
-            element: (
-              <ScaffoldPage
-                title="Users"
-                description="Patients, doctors and administrators on the platform."
-                breadcrumbs={[
-                  { label: "Super admin", to: "/super-admin" },
-                  { label: "Users" },
-                ]}
-                owner="Auth & super admin owner"
-              />
-            ),
-          },
-          {
-            path: "approvals",
-            element: (
-              <ScaffoldPage
-                title="Hospital approvals"
-                description="Hospitals awaiting verification before they can accept bookings."
-                breadcrumbs={[
-                  { label: "Super admin", to: "/super-admin" },
-                  { label: "Approvals" },
-                ]}
-                owner="Auth & super admin owner"
-              />
-            ),
-          },
+          { index: true, element: <Navigate to="/admin/dashboard" replace /> },
+          { path: "dashboard", element: <AdminDashboardPage /> },
+          { path: "hospitals", element: <AdminHospitalsPage /> },
+          { path: "hospitals/pending", element: <PendingHospitalsPage /> },
+          { path: "hospitals/:id", element: <HospitalDetailsPage /> },
+          { path: "users", element: <AdminUsersPage /> },
+          { path: "users/:id", element: <AdminUserDetailsPage /> },
+          { path: "doctors", element: <AdminDoctorsPage /> },
+          { path: "patients", element: <AdminPatientsPage /> },
+          { path: "administrators", element: <AdministratorsPage /> },
+          { path: "analytics", element: <AdminAnalyticsPage /> },
+          { path: "activity", element: <AdminActivityPage /> },
+          { path: "notifications", element: <AdminNotificationsPage /> },
+          { path: "settings", element: <AdminSettingsPage /> },
         ],
       },
     ],
   },
-  { path: "/unauthorized", element: <UnauthorizedPage /> },
+  // Legacy path kept as a redirect so older links and seeded notifications work.
+  { path: "/super-admin", element: <Navigate to="/admin/dashboard" replace /> },
+  { path: "/super-admin/*", element: <Navigate to="/admin/dashboard" replace /> },
   { path: "*", element: <NotFoundPage /> },
 ];
