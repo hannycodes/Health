@@ -3,12 +3,15 @@ import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from "
 import { dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import type { IncomingMessage, ServerResponse } from "node:http";
-import type { Plugin } from "vite";
+import { loadEnv, type Plugin } from "vite";
 
 import type {
   AccountStatus,
+  AIChatMessage,
+  AIConversation,
   AuditAction,
   AuditLog,
+  CareUrgency,
   Hospital,
   HospitalApprovalStatus,
   Notification,
@@ -203,6 +206,386 @@ function text(value: unknown, fallback = "") {
 
 function flag(value: unknown) {
   return value === true;
+}
+
+/* -------------------------------------------------------------------------- */
+/*                             AI health assistant                            */
+/* -------------------------------------------------------------------------- */
+
+interface StoredImage {
+  id: string;
+  fileName: string;
+  mimeType: string;
+  sizeBytes: number;
+  dataUrl: string;
+  uploadedAt: number;
+}
+
+/** Uploaded images live in memory only: never written to data.json or disk. */
+const images = new Map<string, StoredImage>();
+const IMAGE_MAX_BYTES = 5 * 1024 * 1024;
+const IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp"];
+const IMAGE_TTL_MS = 2 * 60 * 60 * 1000;
+
+const EMERGENCY_PATTERNS = [
+  "chest pain",
+  "crushing chest",
+  "cannot breathe",
+  "can't breathe",
+  "not breathing",
+  "difficulty breathing",
+  "slurred speech",
+  "face drooping",
+  "severe bleeding",
+  "unconscious",
+  "sudden weakness",
+  "suicidal",
+  "የደረት ሕመም",
+  "መተንፈስ አልችልም",
+  "ደም መፍሰስ",
+  "ንቃተ ህሊና",
+];
+
+const ETHIOPIC_SCRIPT = /[\u1200-\u137F]/;
+const CARE_URGENCIES: CareUrgency[] = [
+  "EMERGENCY",
+  "URGENT",
+  "ROUTINE",
+  "INFORMATIONAL",
+];
+
+const AI_DISCLAIMER =
+  "This is general health information from MyHealth, not a diagnosis or a prescription. A qualified clinician must assess your symptoms.";
+
+const EMERGENCY_REPLY: Record<
+  "en" | "am",
+  { message: string; recommendations: string[] }
+> = {
+  en: {
+    message:
+      "What you described may be a medical emergency. Call your local emergency number or go to the nearest emergency department now. Do not wait for an appointment, and do not drive yourself if you feel faint.",
+    recommendations: [
+      "Call emergency services now.",
+      "Ask someone nearby to stay with you.",
+    ],
+  },
+  am: {
+    message:
+      "የገለጹት ምልክት የድንገተኛ ሕክምና ሁኔታ ሊሆን ይችላል። አሁን ወደ አቅራቢያዎ የድንገተኛ ክፍል ይሂዱ ወይም የድንገተኛ አገልግሎት ቁጥር ይደውሉ። ቀጠሮ አይጠብቁ።",
+    recommendations: [
+      "አሁን የድንገተኛ አገልግሎት ይደውሉ።",
+      "አካላዊ ጉዳት ካለ በአቅራቢያዎ ያለ ሰው ይጠይቁ።",
+    ],
+  },
+};
+
+const SYSTEM_PROMPT = `You are the MyHealth medical guidance assistant. You provide general health information and healthcare navigation only.
+Hard rules:
+- Never diagnose a condition or claim certainty.
+- Never prescribe medication, suggest doses, or advise stopping/changing a prescription.
+- Never claim an image confirms or rules out a condition.
+- If symptoms could be life-threatening, set urgency to "EMERGENCY" and tell the patient to contact emergency services immediately.
+- Be calm, plain and concise. No markdown headings. No promises.
+- Use the patient context only when it is provided; never invent missing values.
+- Write every string in the same language as the patient's latest message: English or Amharic (አማርኛ). Never answer in a different language.
+Return ONLY a JSON object with this shape:
+{"message":"string","urgency":"EMERGENCY|URGENT|ROUTINE|INFORMATIONAL","followUpQuestions":["..."],"recommendations":["..."],"recommendedSpecialty":"a medical specialty or empty string","disclaimer":"string"}`;
+
+interface AIConfig {
+  key: string;
+  base: string;
+  model: string;
+  timeoutMs: number;
+}
+
+let aiConfigCache: AIConfig | null = null;
+
+/** Server-side AI settings. The key comes from `.env`, never the bundle. */
+function aiConfig(): AIConfig {
+  if (aiConfigCache) return aiConfigCache;
+  let env: Record<string, string> = {};
+  try {
+    const mode =
+      process.env.NODE_ENV === "production" ? "production" : "development";
+    env = loadEnv(mode, process.cwd(), "");
+  } catch {
+    env = {};
+  }
+  const pick = (name: string) => env[name] || process.env[name] || "";
+  aiConfigCache = {
+    key: pick("ZAI_API_KEY") || pick("OPENAI_API_KEY"),
+    base: (
+      pick("ZAI_API_BASE") ||
+      pick("OPENAI_BASE_URL") ||
+      "https://api.z.ai/api/paas/v4"
+    ).replace(/\/+$/, ""),
+    model: pick("ZAI_MODEL") || pick("OPENAI_MODEL") || "glm-4.6v-flash",
+    timeoutMs: Number(pick("AI_TIMEOUT_MS")) || 90_000,
+  };
+  return aiConfigCache;
+}
+
+function isEmergency(value: string) {
+  const lower = value.toLowerCase();
+  return EMERGENCY_PATTERNS.some((pattern) => lower.includes(pattern));
+}
+
+/** Ethiopic script signals Amharic; otherwise the explicit choice wins. */
+function detectLanguage(message: string, requested: string): "en" | "am" {
+  if (ETHIOPIC_SCRIPT.test(message)) return "am";
+  if (requested === "am" || requested === "en") return requested;
+  return "en";
+}
+
+function languageName(language: "en" | "am") {
+  return language === "am" ? "Amharic (አማርኛ)" : "English";
+}
+
+function buildUserText(input: {
+  message: string;
+  patientContext: unknown;
+  language: "en" | "am";
+  hasImages: boolean;
+}) {
+  const hasContext =
+    input.patientContext !== null &&
+    typeof input.patientContext === "object" &&
+    Object.keys(input.patientContext as Record<string, unknown>).length > 0;
+  const context = hasContext
+    ? `Patient context (saved by the patient, may be incomplete): ${JSON.stringify(input.patientContext)}`
+    : "No patient context was provided. Do not invent any.";
+  return [
+    `Reply language: ${languageName(input.language)}. Every string you return must be in that language.`,
+    context,
+    input.hasImages
+      ? "The patient attached one or more images. They may help describe the visible area, but they cannot confirm a condition."
+      : "",
+    `Patient message: ${input.message || "(no text, image only)"}`,
+  ]
+    .filter(Boolean)
+    .join("\n");
+}
+
+function extractJson(raw: string): Record<string, unknown> | null {
+  const cleaned = raw
+    .trim()
+    .replace(/^```(?:json)?/i, "")
+    .replace(/```$/, "");
+  const start = cleaned.indexOf("{");
+  const end = cleaned.lastIndexOf("}");
+  if (start < 0 || end <= start) return null;
+  try {
+    return JSON.parse(cleaned.slice(start, end + 1)) as Record<string, unknown>;
+  } catch {
+    return null;
+  }
+}
+
+function recommendationsFor(specialty: string) {
+  const match = db.doctors.filter(
+    (doctor) => doctor.specialty === specialty && doctor.isAcceptingPatients,
+  );
+  return {
+    doctorIds: match.map((doctor) => doctor.id),
+    hospitalIds: [...new Set(match.map((doctor) => doctor.hospitalId))],
+  };
+}
+
+async function callAIProvider(payload: unknown): Promise<Record<string, unknown>> {
+  const config = aiConfig();
+  if (!config.key) {
+    throw new HttpError(
+      503,
+      "The medical AI is not configured yet. Add ZAI_API_KEY to .env and restart the dev server.",
+      "AI_NOT_CONFIGURED",
+    );
+  }
+
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), config.timeoutMs);
+
+  try {
+    for (let attempt = 0; ; attempt += 1) {
+      let response: Response;
+      try {
+        response = await fetch(`${config.base}/chat/completions`, {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${config.key}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(payload),
+          signal: controller.signal,
+        });
+      } catch (error) {
+        if (controller.signal.aborted) {
+          throw new HttpError(
+            504,
+            "The medical AI took too long to answer. Please try again.",
+            "AI_TIMEOUT",
+          );
+        }
+        console.error(
+          "AI request failed",
+          error instanceof Error ? error.message : error,
+        );
+        throw new HttpError(
+          502,
+          "The medical AI service could not answer right now.",
+          "AI_UNAVAILABLE",
+        );
+      }
+
+      if (response.ok) {
+        return (await response.json()) as Record<string, unknown>;
+      }
+
+      const detail = await response.text().catch(() => "");
+      console.error("AI provider error", response.status, detail.slice(0, 500));
+
+      // The free tier rate-limits bursts: wait once, then explain plainly.
+      if (response.status === 429) {
+        if (attempt === 0) {
+          await new Promise((resolve) => setTimeout(resolve, 5_000));
+          continue;
+        }
+        throw new HttpError(
+          503,
+          "The free AI tier is busy right now. Wait a minute and try again.",
+          "AI_BUSY",
+        );
+      }
+      throw new HttpError(
+        502,
+        "The medical AI service could not answer right now.",
+        "AI_UNAVAILABLE",
+      );
+    }
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+async function generateAIReply(input: {
+  message: string;
+  patientContext: unknown;
+  language: "en" | "am";
+  imageIds: string[];
+}) {
+  const language = input.language;
+  if (isEmergency(input.message)) {
+    const reply = EMERGENCY_REPLY[language];
+    return {
+      message: reply.message,
+      urgency: "EMERGENCY" as CareUrgency,
+      followUpQuestions: [] as string[],
+      recommendations: reply.recommendations,
+      recommendedDoctorIds: [] as string[],
+      recommendedHospitalIds: [] as string[],
+      disclaimer: AI_DISCLAIMER,
+    };
+  }
+
+  const providerImages = input.imageIds
+    .map((id) => images.get(id))
+    .filter((image): image is StoredImage => Boolean(image));
+
+  const userContent: Array<Record<string, unknown>> = [
+    {
+      type: "text",
+      text: buildUserText({
+        message: input.message,
+        patientContext: input.patientContext,
+        language,
+        hasImages: providerImages.length > 0,
+      }),
+    },
+  ];
+  providerImages.forEach((image) => {
+    userContent.push({ type: "image_url", image_url: { url: image.dataUrl } });
+  });
+
+  const data = await callAIProvider({
+    model: aiConfig().model,
+    temperature: 0.2,
+    response_format: { type: "json_object" },
+    messages: [
+      { role: "system", content: SYSTEM_PROMPT },
+      { role: "user", content: userContent },
+    ],
+  });
+
+  const choices = (
+    data as { choices?: Array<{ message?: { content?: string } }> }
+  ).choices;
+  const raw = choices?.[0]?.message?.content ?? "";
+  const parsed = extractJson(raw) ?? {};
+  const urgency = CARE_URGENCIES.includes(parsed.urgency as CareUrgency)
+    ? (parsed.urgency as CareUrgency)
+    : "ROUTINE";
+  const specialty =
+    typeof parsed.recommendedSpecialty === "string"
+      ? parsed.recommendedSpecialty
+      : "";
+  const recommended = recommendationsFor(specialty);
+
+  return {
+    message:
+      typeof parsed.message === "string" && parsed.message.trim()
+        ? parsed.message.trim()
+        : raw.trim(),
+    urgency,
+    followUpQuestions: Array.isArray(parsed.followUpQuestions)
+      ? parsed.followUpQuestions.slice(0, 4).map(String)
+      : [],
+    recommendations: Array.isArray(parsed.recommendations)
+      ? parsed.recommendations.slice(0, 5).map(String)
+      : [],
+    recommendedDoctorIds: recommended.doctorIds,
+    recommendedHospitalIds: recommended.hospitalIds,
+    disclaimer: AI_DISCLAIMER,
+  };
+}
+
+function pruneImages() {
+  const cutoff = Date.now() - IMAGE_TTL_MS;
+  for (const [id, image] of images) {
+    if (image.uploadedAt < cutoff) images.delete(id);
+  }
+}
+
+function hydrateConversation(conversation: AIConversation): AIConversation {
+  return {
+    ...conversation,
+    messages: conversation.messages.map((message) => ({
+      ...message,
+      attachments: (message.attachments ?? []).map((attachment) => ({
+        ...attachment,
+        previewUrl: images.get(attachment.id)?.dataUrl ?? "",
+      })),
+    })),
+  };
+}
+
+function assertPatient(user: User, patientId: string) {
+  if (!patientId || user.id !== patientId) {
+    throw new HttpError(
+      403,
+      "You do not have access to this conversation.",
+      "FORBIDDEN",
+    );
+  }
+}
+
+/** Image bytes stay out of data.json: only attachment metadata is stored. */
+function persistableMessage(message: AIChatMessage): AIChatMessage {
+  return {
+    ...message,
+    attachments: message.attachments.map((attachment) => ({
+      ...attachment,
+      previewUrl: "",
+    })),
+  };
 }
 
 /* -------------------------------------------------------------------------- */
@@ -898,6 +1281,221 @@ async function handle(req: IncomingMessage, res: ServerResponse) {
         persist();
         return send(res, 200, db.settings);
       }
+    }
+  }
+
+  /* ----------------------------- AI assistant ----------------------------- */
+
+  if (root === "ai") {
+    const user = requireUser(req);
+
+    if (second === "health" && method === "GET") {
+      const config = aiConfig();
+      return send(res, 200, {
+        ok: true,
+        aiConfigured: Boolean(config.key),
+        model: config.model,
+      });
+    }
+
+    if (second === "images" && method === "POST") {
+      const mimeType = text(body.mimeType);
+      const dataUrl = text(body.dataBase64);
+      if (!IMAGE_TYPES.includes(mimeType)) {
+        throw new HttpError(
+          415,
+          "Upload a JPG, PNG or WebP image.",
+          "UNSUPPORTED_IMAGE",
+        );
+      }
+      if (!dataUrl.startsWith(`data:${mimeType};base64,`)) {
+        throw new HttpError(400, "The image could not be read. Try attaching it again.");
+      }
+      const base64 = dataUrl.slice(dataUrl.indexOf(",") + 1);
+      const sizeBytes =
+        Number(body.sizeBytes) || Math.floor((base64.length * 3) / 4);
+      if (sizeBytes > IMAGE_MAX_BYTES) {
+        throw new HttpError(413, "Images must be smaller than 5 MB.", "IMAGE_TOO_LARGE");
+      }
+
+      pruneImages();
+      const image: StoredImage = {
+        id: `img-${randomUUID().slice(0, 8)}`,
+        fileName: text(body.fileName).trim() || "image",
+        mimeType,
+        sizeBytes,
+        dataUrl,
+        uploadedAt: Date.now(),
+      };
+      images.set(image.id, image);
+      return send(res, 201, {
+        id: image.id,
+        fileName: image.fileName,
+        mimeType: image.mimeType,
+        sizeBytes: image.sizeBytes,
+        previewUrl: image.dataUrl,
+      });
+    }
+
+    if (second === "conversations" && method === "GET" && !third) {
+      const patientId = url.searchParams.get("patientId") ?? "";
+      assertPatient(user, patientId);
+      return send(
+        res,
+        200,
+        db.conversations
+          .filter((conversation) => conversation.patientId === patientId)
+          .slice()
+          .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))
+          .map(hydrateConversation),
+      );
+    }
+
+    if (second === "conversations" && method === "POST" && !third) {
+      const patientId = text(body.patientId);
+      assertPatient(user, patientId);
+      const now = nowISO();
+      const conversation: AIConversation = {
+        id: `cnv-${randomUUID().slice(0, 8)}`,
+        patientId,
+        title: "New conversation",
+        createdAt: now,
+        updatedAt: now,
+        messages: [],
+      };
+      db.conversations = [conversation, ...db.conversations];
+      persist();
+      return send(res, 201, conversation);
+    }
+
+    if (second === "conversations" && method === "GET" && third) {
+      const conversation = db.conversations.find((item) => item.id === third);
+      if (!conversation) {
+        throw new HttpError(404, "This conversation is no longer available.");
+      }
+      if (conversation.patientId !== user.id) {
+        throw new HttpError(
+          403,
+          "You do not have access to this conversation.",
+          "FORBIDDEN",
+        );
+      }
+      return send(res, 200, hydrateConversation(conversation));
+    }
+
+    if (second === "health-assistant" && third === "messages" && method === "POST") {
+      const patientId = text(body.patientId);
+      assertPatient(user, patientId);
+      const message = text(body.message).trim();
+      const imageIds = Array.isArray(body.imageIds)
+        ? body.imageIds.map(String)
+        : [];
+      if (!message && imageIds.length === 0) {
+        throw new HttpError(
+          422,
+          "Describe your symptoms or attach an image before sending.",
+          "EMPTY_MESSAGE",
+        );
+      }
+
+      pruneImages();
+      const attachments = imageIds.map((id) => {
+        const image = images.get(id);
+        if (!image) {
+          throw new HttpError(
+            400,
+            "That image reference is no longer available. Please attach it again.",
+            "IMAGE_EXPIRED",
+          );
+        }
+        return image;
+      });
+
+      const requestedId = text(body.conversationId);
+      let conversation = requestedId
+        ? db.conversations.find((item) => item.id === requestedId)
+        : undefined;
+      if (requestedId && !conversation) {
+        throw new HttpError(404, "This conversation is no longer available.");
+      }
+      if (conversation && conversation.patientId !== patientId) {
+        throw new HttpError(
+          403,
+          "You do not have access to this conversation.",
+          "FORBIDDEN",
+        );
+      }
+
+      const language = detectLanguage(message, text(body.language));
+      const reply = await generateAIReply({
+        message,
+        patientContext: body.patientContext,
+        language,
+        imageIds,
+      });
+
+      const createdAt = nowISO();
+      const title =
+        message.replace(/\s+/g, " ").slice(0, 60) || "Image consultation";
+
+      if (!conversation) {
+        conversation = {
+          id: `cnv-${randomUUID().slice(0, 8)}`,
+          patientId,
+          title,
+          createdAt,
+          updatedAt: createdAt,
+          messages: [],
+        };
+      }
+      const stored = conversation;
+      const conversationId = stored.id;
+
+      const patientMessage: AIChatMessage = {
+        id: `msg-${randomUUID().slice(0, 8)}`,
+        conversationId,
+        role: "PATIENT",
+        content: message,
+        attachments: attachments.map((image) => ({
+          id: image.id,
+          fileName: image.fileName,
+          mimeType: image.mimeType,
+          sizeBytes: image.sizeBytes,
+          previewUrl: image.dataUrl,
+        })),
+        isMock: false,
+        createdAt,
+      };
+
+      const assistantMessage: AIChatMessage = {
+        id: `msg-${randomUUID().slice(0, 8)}`,
+        conversationId,
+        role: "ASSISTANT",
+        content: reply.message,
+        attachments: [],
+        urgency: reply.urgency,
+        followUpQuestions: reply.followUpQuestions,
+        recommendations: reply.recommendations,
+        disclaimer: reply.disclaimer,
+        recommendedDoctorIds: reply.recommendedDoctorIds,
+        recommendedHospitalIds: reply.recommendedHospitalIds,
+        isMock: false,
+        createdAt: nowISO(),
+      };
+
+      if (stored.messages.length === 0) stored.title = title;
+      stored.messages = [
+        ...stored.messages,
+        persistableMessage(patientMessage),
+        persistableMessage(assistantMessage),
+      ];
+      stored.updatedAt = assistantMessage.createdAt;
+      if (!db.conversations.some((item) => item.id === conversationId)) {
+        db.conversations = [stored, ...db.conversations];
+      }
+      persist();
+
+      return send(res, 200, { ...reply, conversationId, isMock: false });
     }
   }
 

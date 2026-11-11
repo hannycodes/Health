@@ -1,7 +1,10 @@
-import { mockServices } from "@/services/mocks";
 import type {
   AccountStatus,
   AdministratorInvitation,
+  AIConversation,
+  AIHealthRequest,
+  AIHealthResponse,
+  UploadedImage,
   AnalyticsFilter,
   Appointment,
   AppointmentFilter,
@@ -34,6 +37,7 @@ import type {
   User,
 } from "@/types";
 import type {
+  AIHealthService,
   AINavigatorService,
   AdminService,
   AdministratorFilter,
@@ -528,6 +532,63 @@ class HttpSettingsService implements SettingsService {
   }
 }
 
+/**
+ * AI Health Assistant adapter: the browser talks to the MyHealth API only.
+ * Image bytes are posted to `/ai/images` and the model call happens in
+ * `server/api.ts`, so no provider key ever ships in the bundle.
+ */
+class HttpAIHealthService implements AIHealthService {
+  async listConversations(patientId: string): Promise<AIConversation[]> {
+    const { data } = await httpClient.get<AIConversation[]>("/ai/conversations", {
+      params: { patientId },
+    });
+    return data;
+  }
+
+  async getConversation(conversationId: string): Promise<AIConversation | null> {
+    const { data } = await httpClient.get<AIConversation>(
+      `/ai/conversations/${conversationId}`,
+    );
+    return data;
+  }
+
+  async startConversation(patientId: string): Promise<AIConversation> {
+    const { data } = await httpClient.post<AIConversation>("/ai/conversations", {
+      patientId,
+    });
+    return data;
+  }
+
+  async uploadImage(file: File): Promise<UploadedImage> {
+    const dataBase64 = await readFileAsDataUrl(file);
+    const { data } = await httpClient.post<UploadedImage>("/ai/images", {
+      fileName: file.name,
+      mimeType: file.type,
+      sizeBytes: file.size,
+      dataBase64,
+    });
+    return data;
+  }
+
+  async sendMessage(input: AIHealthRequest): Promise<AIHealthResponse> {
+    const { data } = await httpClient.post<AIHealthResponse>(
+      "/ai/health-assistant/messages",
+      input,
+    );
+    return data;
+  }
+}
+
+/** Read a local file as a data URL for the image upload endpoint. */
+function readFileAsDataUrl(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result));
+    reader.onerror = () => reject(new Error("Could not read the selected image."));
+    reader.readAsDataURL(file);
+  });
+}
+
 export function createHttpServices(): ServiceContainer {
   return {
     auth: new HttpAuthService(),
@@ -541,8 +602,7 @@ export function createHttpServices(): ServiceContainer {
     hospitals: new HttpHospitalService(),
     appointments: new HttpAppointmentService(),
     medicalRecords: new HttpMedicalRecordService(),
-    // Patient-side AI still runs on the local rules until the backend merge.
-    aiHealth: mockServices.aiHealth,
+    aiHealth: new HttpAIHealthService(),
     payments: new HttpPaymentService(),
     aiNavigator: new HttpAINavigatorService(),
     notifications: new HttpNotificationService(),

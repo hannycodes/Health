@@ -1,4 +1,5 @@
 import type {
+  AIConversation,
   Appointment,
   AuditLog,
   Doctor,
@@ -32,6 +33,7 @@ export interface ApiDatabase {
   appointments: Appointment[];
   notifications: Notification[];
   auditLogs: AuditLog[];
+  conversations: AIConversation[];
   credentials: StoredCredential[];
   passwordResets: StoredReset[];
   settings: PlatformSettings;
@@ -533,6 +535,7 @@ export function createSeedDatabase(): ApiDatabase {
     appointments: structuredClone(appointments),
     notifications: structuredClone(notifications),
     auditLogs: structuredClone(auditLogs),
+    conversations: [],
     credentials: structuredClone(credentials),
     passwordResets: [],
     settings: structuredClone(settings),
