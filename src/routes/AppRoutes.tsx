@@ -8,7 +8,10 @@ import { SuperAdminLayout } from "@/layouts/SuperAdminLayout";
 import { LandingPage } from "@/pages/LandingPage";
 import { AccountPendingPage } from "@/pages/auth/AccountPendingPage";
 import { ForgotPasswordPage } from "@/pages/auth/ForgotPasswordPage";
+import { DoctorApplyPage } from "@/pages/auth/DoctorApplyPage";
+import { HospitalApplyPage } from "@/pages/auth/HospitalApplyPage";
 import { LoginPage } from "@/pages/auth/LoginPage";
+import { PatientRegisterPage } from "@/pages/auth/PatientRegisterPage";
 import { RegisterPage } from "@/pages/auth/RegisterPage";
 import { ResetPasswordPage } from "@/pages/auth/ResetPasswordPage";
 import { CreateDepartmentPage } from "@/pages/hospital-admin/CreateDepartmentPage";
@@ -68,6 +71,9 @@ export const appRoutes: RouteObject[] = [
     children: [
       { path: "/login", element: <LoginPage /> },
       { path: "/register", element: <RegisterPage /> },
+      { path: "/register/patient", element: <PatientRegisterPage /> },
+      { path: "/register/doctor", element: <DoctorApplyPage /> },
+      { path: "/register/hospital", element: <HospitalApplyPage /> },
       { path: "/forgot-password", element: <ForgotPasswordPage /> },
       { path: "/reset-password", element: <ResetPasswordPage /> },
       { path: "/account-pending", element: <AccountPendingPage /> },

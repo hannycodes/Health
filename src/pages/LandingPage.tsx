@@ -1,7 +1,6 @@
 import { Footer } from "@/components/landing/Footer";
 import { Navbar } from "@/components/landing/Navbar";
 import { AIAndTrust } from "@/components/landing/sections/AIAndTrust";
-import { Audiences } from "@/components/landing/sections/Audiences";
 import { Features } from "@/components/landing/sections/Features";
 import { FinalCTA } from "@/components/landing/sections/FinalCTA";
 import { Hero } from "@/components/landing/sections/Hero";
@@ -23,7 +22,6 @@ export function LandingPage() {
         <Problem />
         <Solution />
         <Features />
-        <Audiences />
         <AIAndTrust />
         <FinalCTA />
       </main>

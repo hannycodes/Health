@@ -41,8 +41,6 @@ describe("landing page", () => {
     for (const id of [
       "top",
       "features",
-      "for-patients",
-      "for-hospitals",
       "about",
     ]) {
       expect(document.querySelector(`#${id}`)).not.toBeNull();

@@ -126,6 +126,24 @@ export function directoryRoutes(auth) {
     res.status(201).json({ user: publicUser(patient), requiresVerification: false });
   });
 
+  /** Doctor and hospital applications, submitted before any account exists. */
+  router.post("/applications/:type", (req, res) => {
+    const { type } = req.params;
+    assert(type === "doctor" || type === "hospital", 404, "Unknown application type.");
+
+    const application = {
+      ...(req.body ?? {}),
+      id: nextId("app"),
+      type: type === "doctor" ? "DOCTOR" : "HOSPITAL",
+      status: "PENDING",
+      createdAt: new Date().toISOString(),
+    };
+
+    db.applications = [...db.applications, application];
+    saveDb();
+    res.status(201).json({ id: application.id, status: application.status });
+  });
+
   router.post("/auth/forgot-password", (req, res) => {
     const email = String(req.body?.email ?? "").trim().toLowerCase();
     const user = db.users.find((candidate) => candidate.email.toLowerCase() === email);

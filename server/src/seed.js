@@ -849,6 +849,7 @@ export function seedDatabase() {
     notifications,
     medicalRecords,
     recommendations: [],
+    applications: [],
     auditLogs,
     passwordResets: [],
     settings,
