@@ -5,13 +5,11 @@ import tailwindcss from "@tailwindcss/vite";
 import react from "@vitejs/plugin-react";
 import { defineConfig } from "vitest/config";
 
-import { apiPlugin } from "./server/api";
-
 const rootDir = path.dirname(fileURLToPath(import.meta.url));
 
 // https://vite.dev/config/
 export default defineConfig({
-  plugins: [react(), tailwindcss(), apiPlugin()],
+  plugins: [react(), tailwindcss()],
   resolve: {
     alias: {
       "@": path.resolve(rootDir, "./src"),
@@ -19,6 +17,13 @@ export default defineConfig({
   },
   server: {
     port: 5173,
+    // The one API lives in server/ (Express, port 8000). Run `npm run api`.
+    proxy: {
+      "/api": {
+        target: process.env.VITE_API_PROXY_TARGET ?? "http://localhost:8000",
+        changeOrigin: true,
+      },
+    },
   },
   test: {
     globals: true,

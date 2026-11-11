@@ -6,10 +6,10 @@ import { demoDb } from "./mocks/store";
 const httpServices = createHttpServices();
 
 /**
- * Auth, platform administration and shared directory data talk to the local
- * API (`server/api.ts`, mounted at `/api` by Vite). Patient-side appointment,
- * payment, medical-record and AI flows still use the shared mock services
- * until those endpoints are added.
+ * Auth, platform administration and shared directory data talk to the API in
+ * `server/` (Express on port 8000, proxied at `/api` by Vite). Patient-side
+ * appointment, payment, medical-record and AI flows still use the shared mock
+ * services until they are switched over.
  *
  * `VITE_DATA_SOURCE=mock` keeps tests fully in-memory; `http` routes every
  * service through the API.
