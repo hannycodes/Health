@@ -1,4 +1,5 @@
 import type { ServiceContainer } from "@/services/interfaces";
+import { MockAIHealthService } from "./aiHealthService";
 import { MockAppointmentService } from "./appointmentService";
 import {
   MockAdminService,
@@ -40,5 +41,6 @@ export const mockServices: ServiceContainer = {
   medicalRecords: new MockMedicalRecordService(),
   payments: new MockPaymentService(),
   aiNavigator: new MockAINavigatorService(),
+  aiHealth: new MockAIHealthService(),
   notifications: new MockNotificationService(),
 };

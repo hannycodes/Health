@@ -38,3 +38,6 @@ coverage
 
 # Freebuff workspace metadata
 .freebuff/
+
+# Local API data (seeded on first run, never committed)
+server/data

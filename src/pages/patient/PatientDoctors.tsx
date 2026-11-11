@@ -1,7 +1,7 @@
 import { useState } from "react";
+import { Link } from "react-router-dom";
 import { Stethoscope } from "lucide-react";
 
-import { BookAppointmentDialog } from "@/components/appointments/BookAppointmentDialog";
 import { EmptyState } from "@/components/common/EmptyState";
 import { ErrorState } from "@/components/common/ErrorState";
 import { ListSkeleton } from "@/components/common/LoadingSpinner";
@@ -16,7 +16,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { useAuth } from "@/hooks/useAuth";
 import { useServiceQuery } from "@/hooks/useServiceQuery";
 import { services } from "@/services";
 import { SPECIALTIES, type Specialty } from "@/types";
@@ -24,45 +23,56 @@ import { SPECIALTIES, type Specialty } from "@/types";
 type SpecialtyFilter = Specialty | "ALL";
 
 export function PatientDoctors() {
-  const { user } = useAuth();
   const [search, setSearch] = useState("");
   const [specialty, setSpecialty] = useState<SpecialtyFilter>("ALL");
+  const [hospitalId, setHospitalId] = useState("ALL");
+  const [availability, setAvailability] = useState("ALL");
 
   const doctors = useServiceQuery(
     () =>
       services.doctors.list({
         search,
         specialty: specialty === "ALL" ? undefined : specialty,
+        hospitalId: hospitalId === "ALL" ? undefined : hospitalId,
+        acceptingOnly: availability === "ACCEPTING",
       }),
-    `${search}:${specialty}`,
+    `${search}:${specialty}:${hospitalId}:${availability}`,
   );
   const hospitals = useServiceQuery(() => services.hospitals.list(), "hospitals");
 
-  const hospitalName = (hospitalId: string) =>
-    hospitals.data?.find((hospital) => hospital.id === hospitalId)?.name;
+  const hospitalName = (id: string) =>
+    hospitals.data?.find((hospital) => hospital.id === id)?.name;
 
   const rows = doctors.data ?? [];
+
+  function clearFilters() {
+    setSearch("");
+    setSpecialty("ALL");
+    setHospitalId("ALL");
+    setAvailability("ALL");
+  }
 
   return (
     <div className="space-y-6">
       <PageHeader
         title="Find a doctor"
-        description="Filter by specialty, compare experience and book directly."
+        description="Filter by specialty, hospital and availability, then open a profile to book."
         breadcrumbs={[{ label: "Patient", to: "/patient" }, { label: "Doctors" }]}
       />
 
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <SearchInput
           value={search}
           onChange={setSearch}
           placeholder="Search by doctor name"
           ariaLabel="Search doctors"
+          className="sm:max-w-none"
         />
         <Select
           value={specialty}
           onValueChange={(value) => setSpecialty(value as SpecialtyFilter)}
         >
-          <SelectTrigger className="sm:w-56" aria-label="Filter by specialty">
+          <SelectTrigger aria-label="Filter by specialty">
             <SelectValue placeholder="All specialties" />
           </SelectTrigger>
           <SelectContent>
@@ -72,6 +82,28 @@ export function PatientDoctors() {
                 {item}
               </SelectItem>
             ))}
+          </SelectContent>
+        </Select>
+        <Select value={hospitalId} onValueChange={setHospitalId}>
+          <SelectTrigger aria-label="Filter by hospital">
+            <SelectValue placeholder="All hospitals" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="ALL">All hospitals</SelectItem>
+            {(hospitals.data ?? []).map((hospital) => (
+              <SelectItem key={hospital.id} value={hospital.id}>
+                {hospital.name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <Select value={availability} onValueChange={setAvailability}>
+          <SelectTrigger aria-label="Filter by availability">
+            <SelectValue placeholder="Any availability" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="ALL">Any availability</SelectItem>
+            <SelectItem value="ACCEPTING">Accepting patients</SelectItem>
           </SelectContent>
         </Select>
       </div>
@@ -84,7 +116,12 @@ export function PatientDoctors() {
         <EmptyState
           icon={Stethoscope}
           title="No doctors match your filters"
-          description="Try another specialty or clear the search."
+          description="Try another specialty, hospital or clear the filters."
+          action={
+            <Button variant="outline" size="sm" onClick={clearFilters}>
+              Clear filters
+            </Button>
+          }
         />
       ) : (
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
@@ -94,16 +131,13 @@ export function PatientDoctors() {
               doctor={doctor}
               hospitalName={hospitalName(doctor.hospitalId)}
               action={
-                user ? (
-                  <BookAppointmentDialog
-                    patientId={user.id}
-                    trigger={
-                      <Button size="sm" className="w-full">
-                        Book appointment
-                      </Button>
-                    }
-                  />
-                ) : null
+                <Button
+                  size="sm"
+                  className="w-full bg-emerald-600 hover:bg-emerald-700"
+                  asChild
+                >
+                  <Link to={`/patient/doctors/${doctor.id}`}>View profile</Link>
+                </Button>
               }
             />
           ))}

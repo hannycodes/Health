@@ -832,6 +832,7 @@ export function createSeedDatabase(): DemoDatabase {
         createdAt: seededAt,
       },
     ],
+    conversations: [],
     credentials: [
       { userId: "pat-001", email: "patient@myhealth.et", password: DEMO_PASSWORD },
       { userId: "doc-001", email: "doctor@myhealth.et", password: DEMO_PASSWORD },

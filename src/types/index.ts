@@ -62,7 +62,17 @@ export const ACCOUNT_STATUSES = [
 ] as const;
 export type AccountStatus = (typeof ACCOUNT_STATUSES)[number];
 
+/** Legacy triage urgency used by the older AI recommendation record. */
 export type UrgencyLevel = "LOW" | "MODERATE" | "HIGH" | "EMERGENCY";
+
+/** Care urgency returned by the AI Health Assistant. */
+export const CARE_URGENCIES = [
+  "EMERGENCY",
+  "URGENT",
+  "ROUTINE",
+  "INFORMATIONAL",
+] as const;
+export type CareUrgency = (typeof CARE_URGENCIES)[number];
 
 export type NotificationType =
   | "APPOINTMENT"
@@ -94,6 +104,19 @@ export interface PlatformUser extends User {
   hospitalName?: string;
 }
 
+/**
+ * Patient health profile supplied by the patient. This is the only patient
+ * information the AI assistant is given; missing values stay missing.
+ */
+export interface PatientHealthContext {
+  age?: number;
+  weightKg?: number;
+  heightCm?: number;
+  allergies?: string[];
+  conditions?: string[];
+  medications?: string[];
+}
+
 export interface Patient extends User {
   role: "PATIENT";
   dateOfBirth?: string;
@@ -105,7 +128,11 @@ export interface Patient extends User {
   weightKg?: number;
   heightCm?: number;
   medicalHistory?: string;
-  allergies?: string;
+  medicalNotes?: string;
+  /** The API stores free text; the UI also accepts a list. */
+  allergies?: string | string[];
+  conditions?: string | string[];
+  medications?: string[];
   currentMedications?: string;
 }
 
@@ -254,6 +281,8 @@ export interface MedicalRecord {
   doctorId: string;
   hospitalId: string;
   appointmentId?: string;
+  /** Visit, lab result, imaging, prescription … (demo label only). */
+  recordType?: string;
   diagnosis: string;
   treatment: string;
   prescription: string[];
@@ -301,6 +330,84 @@ export interface AITriageInput {
   symptoms: string;
   durationDays?: number;
   age?: number;
+}
+
+/* -------------------------------------------------------------------------- */
+/*                          AI health assistant                               */
+/* -------------------------------------------------------------------------- */
+
+export type AIChatRole = "PATIENT" | "ASSISTANT";
+
+/** An image attached to a conversation message. */
+export interface AIChatAttachment {
+  id: string;
+  fileName: string;
+  mimeType: string;
+  sizeBytes: number;
+  /**
+   * Short-lived preview URL issued by the upload endpoint. Empty when the
+   * image is no longer available (for example after a page reload).
+   */
+  previewUrl: string;
+}
+
+export interface AIChatMessage {
+  id: string;
+  conversationId: string;
+  role: AIChatRole;
+  content: string;
+  attachments: AIChatAttachment[];
+  urgency?: CareUrgency;
+  followUpQuestions?: string[];
+  recommendations?: string[];
+  disclaimer?: string;
+  recommendedDoctorIds?: string[];
+  recommendedHospitalIds?: string[];
+  /** True when produced by the local demo rules instead of a real AI model. */
+  isMock: boolean;
+  createdAt: string;
+}
+
+export interface AIConversation {
+  id: string;
+  patientId: string;
+  title: string;
+  createdAt: string;
+  updatedAt: string;
+  messages: AIChatMessage[];
+}
+
+/** Conceptual request contract shared with the backend / AI owner. */
+export interface AIHealthRequest {
+  conversationId?: string;
+  patientId: string;
+  message: string;
+  patientContext: PatientHealthContext;
+  imageIds?: string[];
+  /** Preferred reply language; "auto" follows the language of the message. */
+  language?: "auto" | "en" | "am";
+}
+
+export interface AIHealthResponse {
+  conversationId: string;
+  message: string;
+  urgency?: CareUrgency;
+  followUpQuestions?: string[];
+  recommendations?: string[];
+  disclaimer?: string;
+  recommendedDoctorIds?: string[];
+  recommendedHospitalIds?: string[];
+  /** True when the reply came from the local demo rules. */
+  isMock: boolean;
+}
+
+/** Result of an approved image upload (bytes never reach the AI vendor). */
+export interface UploadedImage {
+  id: string;
+  fileName: string;
+  mimeType: string;
+  sizeBytes: number;
+  previewUrl: string;
 }
 
 /* -------------------------------------------------------------------------- */

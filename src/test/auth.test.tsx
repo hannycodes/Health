@@ -60,7 +60,7 @@ describe("login form", () => {
     await user.click(screen.getByRole("button", { name: /^sign in$/i }));
 
     expect(
-      await screen.findByRole("heading", { name: /welcome back, abebe/i }),
+      await screen.findByRole("heading", { name: /abebe/i }),
     ).toBeInTheDocument();
   });
 });

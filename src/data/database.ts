@@ -1,4 +1,5 @@
 import type {
+  AIConversation,
   AIRecommendation,
   Appointment,
   AuditLog,
@@ -53,4 +54,5 @@ export interface DemoDatabase {
   passwordResets: PasswordReset[];
   auditLogs: AuditLog[];
   settings: PlatformSettings;
+  conversations: AIConversation[];
 }

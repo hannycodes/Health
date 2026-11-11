@@ -12,6 +12,13 @@ import { LoginPage } from "@/pages/auth/LoginPage";
 import { RegisterPage } from "@/pages/auth/RegisterPage";
 import { ResetPasswordPage } from "@/pages/auth/ResetPasswordPage";
 import { PatientAiNavigator } from "@/pages/patient/PatientAiNavigator";
+import { PatientAppointmentDetails } from "@/pages/patient/PatientAppointmentDetails";
+import { PatientAssistant } from "@/pages/patient/PatientAssistant";
+import { PatientBookAppointment } from "@/pages/patient/PatientBookAppointment";
+import { PatientDoctorDetails } from "@/pages/patient/PatientDoctorDetails";
+import { PatientHospitalDetails } from "@/pages/patient/PatientHospitalDetails";
+import { PatientMedicalRecordDetails } from "@/pages/patient/PatientMedicalRecordDetails";
+import { PatientNotifications } from "@/pages/patient/PatientNotifications";
 import { PatientAppointments } from "@/pages/patient/PatientAppointments";
 import { PatientDashboard } from "@/pages/patient/PatientDashboard";
 import { PatientDoctors } from "@/pages/patient/PatientDoctors";
@@ -67,10 +74,17 @@ export const appRoutes: RouteObject[] = [
         children: [
           { index: true, element: <PatientDashboard /> },
           { path: "hospitals", element: <PatientHospitals /> },
+          { path: "hospitals/:id", element: <PatientHospitalDetails /> },
           { path: "doctors", element: <PatientDoctors /> },
+          { path: "doctors/:id", element: <PatientDoctorDetails /> },
           { path: "ai-navigator", element: <PatientAiNavigator /> },
+          { path: "assistant", element: <PatientAssistant /> },
           { path: "appointments", element: <PatientAppointments /> },
+          { path: "appointments/new", element: <PatientBookAppointment /> },
+          { path: "appointments/:id", element: <PatientAppointmentDetails /> },
           { path: "medical-history", element: <PatientMedicalHistory /> },
+          { path: "medical-history/:id", element: <PatientMedicalRecordDetails /> },
+          { path: "notifications", element: <PatientNotifications /> },
           { path: "profile", element: <PatientProfile /> },
         ],
       },

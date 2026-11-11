@@ -39,9 +39,10 @@ export const NAV_BY_ROLE: Record<Role, NavItem[]> = {
     { label: "Dashboard", to: "/patient", icon: LayoutDashboard, end: true },
     { label: "Hospitals", to: "/patient/hospitals", icon: Building2 },
     { label: "Doctors", to: "/patient/doctors", icon: Stethoscope },
-    { label: "AI Navigator", to: "/patient/ai-navigator", icon: Sparkles },
+    { label: "AI Health Assistant", to: "/patient/assistant", icon: Sparkles },
     { label: "Appointments", to: "/patient/appointments", icon: CalendarDays },
     { label: "Medical History", to: "/patient/medical-history", icon: FileHeart },
+    { label: "Notifications", to: "/patient/notifications", icon: Bell },
     { label: "Profile", to: "/patient/profile", icon: UserRound },
   ],
   DOCTOR: [

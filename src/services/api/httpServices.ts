@@ -1,3 +1,4 @@
+import { mockServices } from "@/services/mocks";
 import type {
   AccountStatus,
   AdministratorInvitation,
@@ -314,6 +315,11 @@ class HttpMedicalRecordService implements MedicalRecordService {
     return data;
   }
 
+  async getById(id: string): Promise<MedicalRecord | null> {
+    const { data } = await httpClient.get<MedicalRecord | null>(`/medical-records/${id}`);
+    return data;
+  }
+
   async listByDoctor(doctorId: string): Promise<MedicalRecord[]> {
     const { data } = await httpClient.get<MedicalRecord[]>("/medical-records", {
       params: { doctorId },
@@ -535,6 +541,8 @@ export function createHttpServices(): ServiceContainer {
     hospitals: new HttpHospitalService(),
     appointments: new HttpAppointmentService(),
     medicalRecords: new HttpMedicalRecordService(),
+    // Patient-side AI still runs on the local rules until the backend merge.
+    aiHealth: mockServices.aiHealth,
     payments: new HttpPaymentService(),
     aiNavigator: new HttpAINavigatorService(),
     notifications: new HttpNotificationService(),

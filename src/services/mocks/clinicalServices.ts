@@ -39,6 +39,13 @@ export class MockMedicalRecordService implements MedicalRecordService {
     );
   }
 
+  getById(id: string): Promise<MedicalRecord | null> {
+    return respond(() => {
+      const record = demoDb.get().medicalRecords.find((item) => item.id === id);
+      return record ? { ...record } : null;
+    });
+  }
+
   create(input: Omit<MedicalRecord, "id" | "recordedAt">): Promise<MedicalRecord> {
     return respond(() => {
       const record: MedicalRecord = {

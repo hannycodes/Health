@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="MyHealth">
+  <defs>
+    <linearGradient id="mh" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#059669" />
+      <stop offset="1" stop-color="#047857" />
+    </linearGradient>
+  </defs>
+  <rect width="64" height="64" rx="16" fill="url(#mh)" />
+  <path
+    d="M14 34h8l4-9 6 18 5-13 3 4h10"
+    fill="none"
+    stroke="#ffffff"
+    stroke-width="4"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+  />
+  <circle cx="49" cy="17" r="4" fill="#D1FAE5" />
+</svg>
