@@ -34,6 +34,7 @@ export interface ApiDatabase {
   auditLogs: AuditLog[];
   credentials: StoredCredential[];
   passwordResets: StoredReset[];
+  applications?: Record<string, unknown>[];
   settings: PlatformSettings;
 }
 

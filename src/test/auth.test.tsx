@@ -68,7 +68,7 @@ describe("login form", () => {
 describe("patient registration", () => {
   it("requires the password confirmation to match", async () => {
     const user = userEvent.setup();
-    renderAt("/register");
+    renderAt("/register/patient");
 
     await user.type(await screen.findByLabelText("Full name"), "Test Patient");
     await user.type(screen.getByLabelText("Email"), "test.patient@example.com");
@@ -82,7 +82,7 @@ describe("patient registration", () => {
 
   it("enforces both consent checkboxes", async () => {
     const user = userEvent.setup();
-    renderAt("/register");
+    renderAt("/register/patient");
 
     await user.type(await screen.findByLabelText("Full name"), "Test Patient");
     await user.type(screen.getByLabelText("Email"), "test.patient@example.com");

@@ -377,6 +377,26 @@ async function handle(req: IncomingMessage, res: ServerResponse) {
     }
   }
 
+  /* ---------------------------- Applications ------------------------------ */
+
+  if (root === "applications" && method === "POST") {
+    if (second !== "doctor" && second !== "hospital") {
+      throw new HttpError(404, "Unknown application type.");
+    }
+
+    const application = {
+      id: `app-${randomUUID().slice(0, 8)}`,
+      type: second === "doctor" ? "DOCTOR" : "HOSPITAL",
+      status: "PENDING",
+      createdAt: nowISO(),
+      ...(body as Record<string, unknown>),
+    };
+
+    db.applications = [...(db.applications ?? []), application];
+    persist();
+    return send(res, 201, { id: application.id, status: "PENDING" });
+  }
+
   /* ----------------------------- Hospitals -------------------------------- */
 
   if (root === "hospitals") {
