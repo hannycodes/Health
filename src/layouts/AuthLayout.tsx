@@ -17,7 +17,7 @@ export function AuthLayout() {
       </main>
 
       <footer className="text-muted-foreground px-5 py-6 text-center text-xs sm:px-8">
-        {APP_TAGLINE}. Demo environment — no real patient data.
+        {APP_TAGLINE}.
       </footer>
     </div>
   );

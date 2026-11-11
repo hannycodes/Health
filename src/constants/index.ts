@@ -6,6 +6,10 @@ import type {
   HospitalType,
   PaymentStatus,
   Role,
+  DepartmentStatus,
+  DoctorAccountStatus,
+  HospitalServiceOffering,
+  Weekday,
 } from "@/types";
 
 export const APP_NAME = "MyHealth";
@@ -87,6 +91,45 @@ export const PAYMENT_METHOD_LABELS = {
   ONLINE: "Pay online",
   PAY_AT_HOSPITAL: "Pay at hospital",
 } as const;
+
+export const HOSPITAL_SERVICE_LABELS: Record<HospitalServiceOffering, string> = {
+  EMERGENCY: "Emergency services",
+  OUTPATIENT: "Outpatient clinics",
+  INPATIENT: "Inpatient wards",
+  LABORATORY: "Laboratory",
+  IMAGING: "Imaging & radiology",
+  PHARMACY: "Pharmacy",
+};
+
+export const DEPARTMENT_STATUS_LABELS: Record<DepartmentStatus, string> = {
+  ACTIVE: "Active",
+  INACTIVE: "Inactive",
+};
+
+export const DOCTOR_ACCOUNT_STATUS_LABELS: Record<DoctorAccountStatus, string> = {
+  ACTIVE: "Account active",
+  PENDING_INVITATION: "Invitation pending",
+};
+
+export const WEEKDAYS: Weekday[] = [
+  "MONDAY",
+  "TUESDAY",
+  "WEDNESDAY",
+  "THURSDAY",
+  "FRIDAY",
+  "SATURDAY",
+  "SUNDAY",
+];
+
+export const WEEKDAY_LABELS: Record<Weekday, string> = {
+  MONDAY: "Monday",
+  TUESDAY: "Tuesday",
+  WEDNESDAY: "Wednesday",
+  THURSDAY: "Thursday",
+  FRIDAY: "Friday",
+  SATURDAY: "Saturday",
+  SUNDAY: "Sunday",
+};
 
 export const DEMO_STORAGE_KEY = "myhealth:demo-db:v1";
 export const AUTH_STORAGE_KEY = "myhealth:auth:v1";

@@ -12,6 +12,10 @@ import type {
   AuditLogFilter,
   AuthSession,
   CreateAppointmentInput,
+  CreateDepartmentInput,
+  CreateDoctorInput,
+  Department,
+  DepartmentStatus,
   Doctor,
   DoctorAvailability,
   ForgotPasswordResponse,
@@ -89,7 +93,11 @@ export interface DoctorService {
   list(filter?: DoctorFilter): Promise<Doctor[]>;
   getById(id: string): Promise<Doctor | null>;
   getByUserId(userId: string): Promise<Doctor | null>;
+  /** Register a doctor profile inside the administrator's hospital. */
+  create(input: CreateDoctorInput): Promise<Doctor>;
   update(id: string, patch: Partial<Doctor>): Promise<Doctor>;
+  /** Activate or deactivate a doctor within their hospital. */
+  setActive(id: string, active: boolean): Promise<Doctor>;
   listAvailability(doctorId: string): Promise<DoctorAvailability[]>;
   saveAvailability(
     input: Omit<DoctorAvailability, "id"> & { id?: string },
@@ -121,6 +129,34 @@ export interface HospitalService {
     id: string,
     patch: Partial<HospitalCapacity>,
   ): Promise<Hospital>;
+}
+
+export interface DepartmentFilter {
+  hospitalId?: string;
+  specialty?: Specialty;
+  status?: DepartmentStatus;
+  search?: string;
+}
+
+export interface DepartmentService {
+  list(filter?: DepartmentFilter): Promise<Department[]>;
+  getById(id: string): Promise<Department | null>;
+  create(input: CreateDepartmentInput): Promise<Department>;
+  update(
+    id: string,
+    patch: Partial<
+      Pick<
+        Department,
+        | "name"
+        | "description"
+        | "specialty"
+        | "contactPhone"
+        | "contactEmail"
+        | "location"
+      >
+    >,
+  ): Promise<Department>;
+  setStatus(id: string, status: DepartmentStatus): Promise<Department>;
 }
 
 export interface AppointmentService {
@@ -226,6 +262,7 @@ export interface ServiceContainer {
   settings: SettingsService;
   patients: PatientService;
   doctors: DoctorService;
+  departments: DepartmentService;
   hospitals: HospitalService;
   appointments: AppointmentService;
   medicalRecords: MedicalRecordService;

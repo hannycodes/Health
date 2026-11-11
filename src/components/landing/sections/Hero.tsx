@@ -128,7 +128,7 @@ export function Hero() {
         </div>
 
         <p className="text-ink-muted mt-6 text-center text-[11px]">
-          Illustrative interface previews using fictional demo data.
+          Illustrative interface previews using fictional data.
         </p>
       </div>
     </section>

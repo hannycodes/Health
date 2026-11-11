@@ -10,6 +10,10 @@ import type {
   AuditLogFilter,
   AuthSession,
   CreateAppointmentInput,
+  CreateDepartmentInput,
+  CreateDoctorInput,
+  Department,
+  DepartmentStatus,
   Doctor,
   DoctorAvailability,
   ForgotPasswordResponse,
@@ -40,6 +44,8 @@ import type {
   AppointmentService,
   AuditLogService,
   AuthService,
+  DepartmentFilter,
+  DepartmentService,
   DoctorFilter,
   DoctorService,
   HospitalFilter,
@@ -152,8 +158,20 @@ class HttpDoctorService implements DoctorService {
     return data;
   }
 
+  async create(input: CreateDoctorInput): Promise<Doctor> {
+    const { data } = await httpClient.post<Doctor>("/doctors", input);
+    return data;
+  }
+
   async update(id: string, patch: Partial<Doctor>): Promise<Doctor> {
     const { data } = await httpClient.patch<Doctor>(`/doctors/${id}`, patch);
+    return data;
+  }
+
+  async setActive(id: string, active: boolean): Promise<Doctor> {
+    const { data } = await httpClient.patch<Doctor>(`/doctors/${id}/activation`, {
+      active,
+    });
     return data;
   }
 
@@ -245,6 +263,37 @@ class HttpHospitalService implements HospitalService {
     patch: Partial<HospitalCapacity>,
   ): Promise<Hospital> {
     const { data } = await httpClient.patch<Hospital>(`/hospitals/${id}/capacity`, patch);
+    return data;
+  }
+}
+
+class HttpDepartmentService implements DepartmentService {
+  async list(filter?: DepartmentFilter): Promise<Department[]> {
+    const { data } = await httpClient.get<Department[]>("/departments", {
+      params: filter,
+    });
+    return data;
+  }
+
+  async getById(id: string): Promise<Department | null> {
+    const { data } = await httpClient.get<Department>(`/departments/${id}`);
+    return data;
+  }
+
+  async create(input: CreateDepartmentInput): Promise<Department> {
+    const { data } = await httpClient.post<Department>("/departments", input);
+    return data;
+  }
+
+  async update(id: string, patch: Partial<Department>): Promise<Department> {
+    const { data } = await httpClient.patch<Department>(`/departments/${id}`, patch);
+    return data;
+  }
+
+  async setStatus(id: string, status: DepartmentStatus): Promise<Department> {
+    const { data } = await httpClient.patch<Department>(`/departments/${id}/status`, {
+      status,
+    });
     return data;
   }
 }
@@ -531,6 +580,7 @@ export function createHttpServices(): ServiceContainer {
     settings: new HttpSettingsService(),
     patients: new HttpPatientService(),
     doctors: new HttpDoctorService(),
+    departments: new HttpDepartmentService(),
     hospitals: new HttpHospitalService(),
     appointments: new HttpAppointmentService(),
     medicalRecords: new HttpMedicalRecordService(),
