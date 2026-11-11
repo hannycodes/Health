@@ -76,8 +76,7 @@ export function GetStartedDialog({
         <DialogHeader>
           <DialogTitle>Choose how you'll use MyHealth</DialogTitle>
           <DialogDescription>
-            Continue to sign in. Each role has a demo account listed on the sign-in
-            screen.
+            Continue to sign in to access your workspace.
           </DialogDescription>
         </DialogHeader>
 
@@ -102,9 +101,7 @@ export function GetStartedDialog({
           ))}
         </div>
 
-        <p className="text-muted-foreground text-xs">
-          No real patient information is used in this environment.
-        </p>
+
       </DialogContent>
     </Dialog>
   );

@@ -6,7 +6,6 @@ import { z } from "zod";
 import { LogIn } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import {
   Card,
   CardContent,
@@ -16,8 +15,7 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { ROLE_HOME, ROLE_LABELS } from "@/constants";
-import { DEMO_ACCOUNTS } from "@/data/demoAccounts";
+import { ROLE_HOME } from "@/constants";
 import { useAuth } from "@/hooks/useAuth";
 import { getApiErrorMessage } from "@/lib/http";
 
@@ -54,18 +52,12 @@ export function LoginPage() {
     }
   }
 
-  function fillDemoAccount(email: string, password: string) {
-    form.setValue("email", email, { shouldValidate: true });
-    form.setValue("password", password, { shouldValidate: true });
-    setFormError(null);
-  }
-
   return (
     <Card>
       <CardHeader>
         <CardTitle className="text-xl">Sign in to MyHealth</CardTitle>
         <CardDescription>
-          Use one of the demo accounts below to explore a role.
+          Sign in with your MyHealth account to open your workspace.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-5">
@@ -116,29 +108,6 @@ export function LoginPage() {
           </Button>
         </form>
 
-        <div className="space-y-2">
-          <p className="text-muted-foreground text-xs font-medium tracking-wide uppercase">
-            Demo accounts
-          </p>
-          <div className="grid gap-2">
-            {DEMO_ACCOUNTS.map((account) => (
-              <button
-                key={account.email}
-                type="button"
-                onClick={() => fillDemoAccount(account.email, account.password)}
-                className="hover:bg-accent flex items-center justify-between gap-2 rounded-lg border px-3 py-2 text-left transition-colors"
-              >
-                <span className="min-w-0">
-                  <span className="block text-xs font-medium">{account.description}</span>
-                  <span className="text-muted-foreground block truncate text-[11px]">
-                    {account.email} · {account.password}
-                  </span>
-                </span>
-                <Badge variant="secondary">{ROLE_LABELS[account.role]}</Badge>
-              </button>
-            ))}
-          </div>
-        </div>
       </CardContent>
     </Card>
   );
