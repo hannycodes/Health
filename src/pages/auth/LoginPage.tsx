@@ -136,6 +136,20 @@ export function LoginPage() {
             {form.formState.isSubmitting ? "Signing in…" : "Sign in"}
           </Button>
         </form>
+
+        <div className="space-y-1 text-center">
+          <p className="text-muted-foreground text-sm">
+            New patient?{" "}
+            <Link to="/register" className="text-primary font-medium hover:underline">
+              Create an account
+            </Link>
+          </p>
+          <p className="text-muted-foreground text-xs">
+            Doctors and hospitals sign in with the account verified by the platform
+            administrator; they do not register through the patient form.
+          </p>
+        </div>
+
       </CardContent>
     </Card>
   );

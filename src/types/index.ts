@@ -118,6 +118,12 @@ export interface Patient extends User {
   bloodType?: string;
   address?: string;
   emergencyContact?: string;
+  age?: number;
+  weightKg?: number;
+  heightCm?: number;
+  medicalHistory?: string;
+  allergies?: string;
+  currentMedications?: string;
 }
 
 export interface Doctor extends User {
@@ -436,6 +442,12 @@ export interface PatientRegistrationRequest {
   phone: string;
   dateOfBirth?: string;
   gender?: Gender;
+  age?: number;
+  weightKg?: number;
+  heightCm?: number;
+  medicalHistory?: string;
+  allergies?: string;
+  currentMedications?: string;
   password: string;
   acceptedTerms: boolean;
   acceptedPrivacy: boolean;

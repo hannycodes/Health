@@ -5,7 +5,6 @@ import { Audiences } from "@/components/landing/sections/Audiences";
 import { Features } from "@/components/landing/sections/Features";
 import { FinalCTA } from "@/components/landing/sections/FinalCTA";
 import { Hero } from "@/components/landing/sections/Hero";
-import { HowItWorks } from "@/components/landing/sections/HowItWorks";
 import { Problem } from "@/components/landing/sections/Problem";
 import { Solution } from "@/components/landing/sections/Solution";
 
@@ -24,7 +23,6 @@ export function LandingPage() {
         <Problem />
         <Solution />
         <Features />
-        <HowItWorks />
         <Audiences />
         <AIAndTrust />
         <FinalCTA />

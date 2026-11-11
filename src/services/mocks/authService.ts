@@ -56,7 +56,7 @@ export class MockAuthService implements AuthService {
       throw new ApiError({
         status: 401,
         code: "INVALID_CREDENTIALS",
-        message: "Invalid email or password. Try one of the demo accounts below.",
+        message: "Invalid email or password.",
       });
     }
 
@@ -108,6 +108,12 @@ export class MockAuthService implements AuthService {
       phone: data.phone.trim(),
       dateOfBirth: data.dateOfBirth || undefined,
       gender: data.gender,
+      age: data.age,
+      weightKg: data.weightKg,
+      heightCm: data.heightCm,
+      medicalHistory: data.medicalHistory,
+      allergies: data.allergies,
+      currentMedications: data.currentMedications,
       status: "ACTIVE",
       createdAt: new Date().toISOString(),
     };

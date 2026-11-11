@@ -4,7 +4,7 @@ import {
   AUTH_STORAGE_KEY,
   SESSION_EXPIRED_EVENT,
 } from "@/constants";
-import { clearSession } from "@/lib/session";
+import { clearSession, readSession } from "@/lib/session";
 
 export interface ApiErrorShape {
   status: number;
@@ -28,14 +28,13 @@ export class ApiError extends Error implements ApiErrorShape {
   }
 }
 
-const baseURL = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8000/api";
+const baseURL = import.meta.env.VITE_API_BASE_URL ?? "/api";
 
 /**
  * Shared Axios instance.
  *
  * Attaches the stored session token and normalises every failure into an
- * `ApiError` so feature code only has to handle one error shape. No endpoint
- * is called until the backend team publishes API_CONTRACT.md.
+ * `ApiError` so feature code only has to handle one error shape.
  */
 export const httpClient: AxiosInstance = axios.create({
   baseURL,
@@ -45,12 +44,9 @@ export const httpClient: AxiosInstance = axios.create({
 
 httpClient.interceptors.request.use((config) => {
   try {
-    const raw = window.localStorage.getItem(AUTH_STORAGE_KEY);
-    if (raw) {
-      const session = JSON.parse(raw) as { token?: string };
-      if (session.token) {
-        config.headers.Authorization = `Bearer ${session.token}`;
-      }
+    const session = readSession();
+    if (session?.token) {
+      config.headers.Authorization = `Bearer ${session.token}`;
     }
   } catch {
     // Ignore malformed session payloads; the request proceeds unauthenticated.

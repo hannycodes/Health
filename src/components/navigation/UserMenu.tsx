@@ -43,9 +43,11 @@ export function UserMenu() {
           </Avatar>
           <span className="hidden text-left sm:flex sm:flex-col">
             <span className="text-xs leading-tight font-medium">{user.fullName}</span>
-            <span className="text-muted-foreground text-[11px] leading-tight">
-              {ROLE_LABELS[role]}
-            </span>
+            {ROLE_LABELS[role] !== user.fullName && (
+              <span className="text-muted-foreground text-[11px] leading-tight">
+                {ROLE_LABELS[role]}
+              </span>
+            )}
           </span>
         </Button>
       </DropdownMenuTrigger>

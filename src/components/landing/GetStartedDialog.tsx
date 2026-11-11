@@ -52,8 +52,7 @@ const OPTIONS: {
 /**
  * Get Started dialog.
  *
- * There is no public registration flow yet, so this routes into the existing
- * demo sign-in rather than inventing an account-creation system.
+ * This routes into the existing sign-in for the selected role.
  */
 export function GetStartedDialog({
   trigger,
@@ -76,7 +75,7 @@ export function GetStartedDialog({
         <DialogHeader>
           <DialogTitle>Choose how you'll use MyHealth</DialogTitle>
           <DialogDescription>
-            Continue to sign in to access your workspace.
+            Continue to sign in to the workspace that matches how you use MyHealth.
           </DialogDescription>
         </DialogHeader>
 

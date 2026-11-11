@@ -6,7 +6,6 @@ const COLUMNS = [
   {
     title: "Product",
     links: [
-      { label: "How It Works", href: "#how-it-works" },
       { label: "Features", href: "#features" },
       { label: "AI & Trust", href: "#about" },
     ],
@@ -75,6 +74,9 @@ export function Footer() {
 
         <div className="mt-12 flex flex-col gap-3 border-t border-white/10 pt-6 text-xs sm:flex-row sm:items-center sm:justify-between">
           <p>© {new Date().getFullYear()} MyHealth. All rights reserved.</p>
+          <p className="text-white/45">
+            Coordinated care for patients, doctors and hospitals.
+          </p>
         </div>
       </div>
     </footer>

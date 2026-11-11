@@ -127,6 +127,18 @@ Patient objects never include `passwordHash`.
   inactive or invited doctors, times outside published availability, and
   overlapping slots for either the doctor or the patient.
 
+## Two APIs share this folder
+
+`src/` is the standalone Express service documented above; it runs on its own
+port with `npm start` and is what the endpoint tables describe.
+
+`api.ts` and `seed.ts` are a different, newer implementation: a Vite plugin
+(`apiPlugin()` in `vite.config.ts`) that serves auth and platform-admin routes
+from inside the dev server, storing data in `server/data.json`. The two
+overlap and should be consolidated into one — until then, treat the Express
+API as the reference for the endpoints below and the plugin as the dev-server
+transport the frontend currently calls.
+
 ## Not implemented
 
 Online payment processing, email/SMS delivery (notifications are in-app rows),

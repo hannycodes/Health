@@ -2,7 +2,7 @@ import { Check, FileText, Sparkles, Stethoscope } from "lucide-react";
 
 /**
  * Illustrative doctor dashboard preview with a clearly labelled AI draft.
- * Fictional demo data only.
+ * Fictional data only.
  */
 export function DoctorDashboardPreview() {
   return (

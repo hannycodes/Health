@@ -7,7 +7,7 @@ import type { DemoAccount } from "@/types";
  * because the backend authentication endpoint is not available yet. Delete
  * this file once real authentication lands.
  */
-export const DEMO_PASSWORD = "demo1234";
+export const DEMO_PASSWORD = "myhealth123";
 
 export const DEMO_ACCOUNTS: DemoAccount[] = [
   {
@@ -36,6 +36,6 @@ export const DEMO_ACCOUNTS: DemoAccount[] = [
     email: "admin@myhealth.et",
     password: DEMO_PASSWORD,
     role: "SUPER_ADMIN",
-    description: "Daniel Fikru — platform administration",
+    description: "Super Admin — platform administration",
   },
 ];
