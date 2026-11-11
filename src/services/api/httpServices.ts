@@ -1,4 +1,7 @@
 import type {
+  AIConversation,
+  AIHealthRequest,
+  AIHealthResponse,
   Appointment,
   AppointmentFilter,
   AppointmentStatus,
@@ -15,9 +18,11 @@ import type {
   Notification,
   Patient,
   Payment,
+  UploadedImage,
   User,
 } from "@/types";
 import type {
+  AIHealthService,
   AINavigatorService,
   AppointmentService,
   AuthService,
@@ -250,6 +255,11 @@ class HttpMedicalRecordService implements MedicalRecordService {
     return data;
   }
 
+  async getById(id: string): Promise<MedicalRecord | null> {
+    const { data } = await httpClient.get<MedicalRecord>(`/medical-records/${id}`);
+    return data;
+  }
+
   async create(input: Omit<MedicalRecord, "id" | "recordedAt">): Promise<MedicalRecord> {
     const { data } = await httpClient.post<MedicalRecord>("/medical-records", input);
     return data;
@@ -312,6 +322,52 @@ class HttpAINavigatorService implements AINavigatorService {
   }
 }
 
+/**
+ * AI Health Assistant adapter — PLACEHOLDER.
+ *
+ * Images are uploaded to the backend, which owns the AI provider credential
+ * and performs the model call. The browser never talks to an AI vendor.
+ */
+class HttpAIHealthService implements AIHealthService {
+  async listConversations(patientId: string): Promise<AIConversation[]> {
+    const { data } = await httpClient.get<AIConversation[]>("/ai/conversations", {
+      params: { patientId },
+    });
+    return data;
+  }
+
+  async getConversation(conversationId: string): Promise<AIConversation | null> {
+    const { data } = await httpClient.get<AIConversation>(
+      `/ai/conversations/${conversationId}`,
+    );
+    return data;
+  }
+
+  async startConversation(patientId: string): Promise<AIConversation> {
+    const { data } = await httpClient.post<AIConversation>("/ai/conversations", {
+      patientId,
+    });
+    return data;
+  }
+
+  async uploadImage(file: File): Promise<UploadedImage> {
+    const form = new FormData();
+    form.append("image", file);
+    const { data } = await httpClient.post<UploadedImage>("/ai/images", form, {
+      headers: { "Content-Type": "multipart/form-data" },
+    });
+    return data;
+  }
+
+  async sendMessage(input: AIHealthRequest): Promise<AIHealthResponse> {
+    const { data } = await httpClient.post<AIHealthResponse>(
+      "/ai/health-assistant/messages",
+      input,
+    );
+    return data;
+  }
+}
+
 class HttpNotificationService implements NotificationService {
   async listForUser(userId: string): Promise<Notification[]> {
     const { data } = await httpClient.get<Notification[]>("/notifications", {
@@ -346,6 +402,7 @@ export function createHttpServices(): ServiceContainer {
     medicalRecords: new HttpMedicalRecordService(),
     payments: new HttpPaymentService(),
     aiNavigator: new HttpAINavigatorService(),
+    aiHealth: new HttpAIHealthService(),
     notifications: new HttpNotificationService(),
   };
 }

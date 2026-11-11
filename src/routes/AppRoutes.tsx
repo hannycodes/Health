@@ -1,4 +1,4 @@
-import type { RouteObject } from "react-router-dom";
+import { Navigate, type RouteObject } from "react-router-dom";
 
 import { AuthLayout } from "@/layouts/AuthLayout";
 import { DoctorLayout } from "@/layouts/DoctorLayout";
@@ -6,12 +6,18 @@ import { HospitalAdminLayout } from "@/layouts/HospitalAdminLayout";
 import { PatientLayout } from "@/layouts/PatientLayout";
 import { SuperAdminLayout } from "@/layouts/SuperAdminLayout";
 import { LoginPage } from "@/pages/auth/LoginPage";
-import { PatientAiNavigator } from "@/pages/patient/PatientAiNavigator";
+import { PatientAppointmentDetails } from "@/pages/patient/PatientAppointmentDetails";
 import { PatientAppointments } from "@/pages/patient/PatientAppointments";
+import { PatientAssistant } from "@/pages/patient/PatientAssistant";
+import { PatientBookAppointment } from "@/pages/patient/PatientBookAppointment";
 import { PatientDashboard } from "@/pages/patient/PatientDashboard";
+import { PatientDoctorDetails } from "@/pages/patient/PatientDoctorDetails";
 import { PatientDoctors } from "@/pages/patient/PatientDoctors";
+import { PatientHospitalDetails } from "@/pages/patient/PatientHospitalDetails";
 import { PatientHospitals } from "@/pages/patient/PatientHospitals";
 import { PatientMedicalHistory } from "@/pages/patient/PatientMedicalHistory";
+import { PatientMedicalRecordDetails } from "@/pages/patient/PatientMedicalRecordDetails";
+import { PatientNotifications } from "@/pages/patient/PatientNotifications";
 import { PatientProfile } from "@/pages/patient/PatientProfile";
 import { NotFoundPage } from "@/pages/shared/NotFoundPage";
 import { ScaffoldPage } from "@/pages/shared/ScaffoldPage";
@@ -41,11 +47,26 @@ export const appRoutes: RouteObject[] = [
         element: <PatientLayout />,
         children: [
           { index: true, element: <PatientDashboard /> },
+          { path: "dashboard", element: <PatientDashboard /> },
+          { path: "assistant", element: <PatientAssistant /> },
+          // The old AI Navigator URL is kept as a redirect for saved links.
+          {
+            path: "ai-navigator",
+            element: <Navigate to="/patient/assistant" replace />,
+          },
           { path: "hospitals", element: <PatientHospitals /> },
+          { path: "hospitals/:id", element: <PatientHospitalDetails /> },
           { path: "doctors", element: <PatientDoctors /> },
-          { path: "ai-navigator", element: <PatientAiNavigator /> },
+          { path: "doctors/:id", element: <PatientDoctorDetails /> },
           { path: "appointments", element: <PatientAppointments /> },
+          {
+            path: "appointments/book/:doctorId",
+            element: <PatientBookAppointment />,
+          },
+          { path: "appointments/:id", element: <PatientAppointmentDetails /> },
           { path: "medical-history", element: <PatientMedicalHistory /> },
+          { path: "medical-history/:id", element: <PatientMedicalRecordDetails /> },
+          { path: "notifications", element: <PatientNotifications /> },
           { path: "profile", element: <PatientProfile /> },
         ],
       },

@@ -1,4 +1,5 @@
 import type {
+  AIConversation,
   AIRecommendation,
   Appointment,
   Doctor,
@@ -32,4 +33,5 @@ export interface DemoDatabase {
   availability: DoctorAvailability[];
   notifications: Notification[];
   recommendations: AIRecommendation[];
+  conversations: AIConversation[];
 }

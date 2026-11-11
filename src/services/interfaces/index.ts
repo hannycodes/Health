@@ -1,4 +1,7 @@
 import type {
+  AIConversation,
+  AIHealthRequest,
+  AIHealthResponse,
   AIRecommendation,
   AITriageInput,
   Appointment,
@@ -18,6 +21,7 @@ import type {
   Patient,
   Payment,
   Specialty,
+  UploadedImage,
   User,
 } from "@/types";
 
@@ -53,6 +57,12 @@ export interface PatientService {
         | "bloodType"
         | "dateOfBirth"
         | "gender"
+        | "weightKg"
+        | "heightCm"
+        | "allergies"
+        | "conditions"
+        | "medications"
+        | "medicalNotes"
       >
     >,
   ): Promise<Patient>;
@@ -118,6 +128,7 @@ export interface AppointmentService {
 export interface MedicalRecordService {
   listByPatient(patientId: string): Promise<MedicalRecord[]>;
   listByDoctor(doctorId: string): Promise<MedicalRecord[]>;
+  getById(id: string): Promise<MedicalRecord | null>;
   create(input: Omit<MedicalRecord, "id" | "recordedAt">): Promise<MedicalRecord>;
 }
 
@@ -133,6 +144,22 @@ export interface PaymentService {
 export interface AINavigatorService {
   analyze(input: AITriageInput): Promise<AIRecommendation>;
   listByPatient(patientId: string): Promise<AIRecommendation[]>;
+}
+
+/**
+ * AI Health Assistant contract.
+ *
+ * The browser talks to the MyHealth backend only: image bytes go to the
+ * upload endpoint and the model call happens server-side, so no provider key
+ * ever ships in the bundle.
+ */
+export interface AIHealthService {
+  listConversations(patientId: string): Promise<AIConversation[]>;
+  getConversation(conversationId: string): Promise<AIConversation | null>;
+  startConversation(patientId: string): Promise<AIConversation>;
+  /** Upload an approved image and receive a short-lived reference. */
+  uploadImage(file: File): Promise<UploadedImage>;
+  sendMessage(input: AIHealthRequest): Promise<AIHealthResponse>;
 }
 
 export interface NotificationService {
@@ -151,5 +178,6 @@ export interface ServiceContainer {
   medicalRecords: MedicalRecordService;
   payments: PaymentService;
   aiNavigator: AINavigatorService;
+  aiHealth: AIHealthService;
   notifications: NotificationService;
 }

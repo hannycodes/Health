@@ -21,6 +21,7 @@ export const notificationService = services.notifications;
 export const patientService = services.patients;
 export const paymentService = services.payments;
 export const aiNavigatorService = services.aiNavigator;
+export const aiHealthService = services.aiHealth;
 
 export { demoDb };
 

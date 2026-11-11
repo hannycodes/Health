@@ -91,6 +91,11 @@ export function AppointmentTable({
                     <p className="text-muted-foreground text-xs">
                       {appointment.doctorSpecialty}
                     </p>
+                    {perspective === "patient" && (
+                      <p className="text-muted-foreground text-xs">
+                        {appointment.hospitalName}
+                      </p>
+                    )}
                   </TableCell>
                 )}
                 {perspective === "super-admin" && (
