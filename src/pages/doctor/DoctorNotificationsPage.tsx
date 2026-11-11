@@ -23,8 +23,8 @@ export function DoctorNotificationsPage() {
         title="Notifications"
         description={
           unread > 0
-            ? `${unread} unread notification(s) for your clinical workspace.`
-            : "Appointment activity and system messages for your workspace."
+            ? `${unread} unread notification(s) about your patients.`
+            : "Appointment activity and system messages about your patients."
         }
         breadcrumbs={[{ label: "Doctor", to: "/doctor" }, { label: "Notifications" }]}
       />

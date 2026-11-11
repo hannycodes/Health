@@ -89,8 +89,8 @@ export function DoctorProfilePage() {
                   {doctor.rating.toFixed(1)}
                 </p>
                 <p className="text-muted-foreground">
-                  Credentials are read-only in this demo. Professional credentials are not
-                  invented or editable from the Doctor Portal.
+                  Credentials are read-only. Professional credentials are not invented or
+                  editable from the Doctor Portal.
                 </p>
               </CardContent>
             </Card>

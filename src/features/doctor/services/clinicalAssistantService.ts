@@ -52,12 +52,12 @@ export const DOCTOR_AI_TASKS: Array<{ value: DoctorAITask; label: string; hint: 
   {
     value: "DOCUMENT_SUMMARY",
     label: "Document summary",
-    hint: "Organize an uploaded document (metadata only in this demo).",
+    hint: "Organize the contents of an uploaded document.",
   },
   {
     value: "IMAGE_ASSISTANCE",
     label: "Image observation",
-    hint: "Describe an uploaded clinical photograph (metadata only in this demo).",
+    hint: "Describe an uploaded clinical photograph.",
   },
   {
     value: "RESULT_COMPARISON",

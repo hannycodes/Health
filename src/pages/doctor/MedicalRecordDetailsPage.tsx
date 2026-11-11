@@ -207,8 +207,8 @@ export function MedicalRecordDetailsPage() {
             </CardHeader>
             <CardContent className="space-y-2 text-xs">
               <p className="text-muted-foreground">
-                Records are append-only in this demo: there is no edit or amendment
-                endpoint, so this record cannot be modified here.
+                Records are append-only: there is no edit or amendment endpoint, so this
+                record cannot be modified here.
               </p>
               <p className="text-muted-foreground">
                 Corrections require an amendment workflow in the backend contract.

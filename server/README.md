@@ -28,7 +28,7 @@ to its own origin.
 | ------ | -------------------- | -------------------------------------------------- |
 | GET    | `/api/ai/status`     | Whether a key is configured, provider, models      |
 | POST   | `/api/ai/clinical`   | Patient-context clinical reasoning (JSON in/out)   |
-| POST   | `/api/ai/transcribe` | Voice message → text (raw audio body, webm/m4a…)   |
+| POST   | `/api/ai/transcribe` | Voice message → text (raw audio body, WAV or MP3)  |
 
 ### `/api/ai/clinical`
 

@@ -229,7 +229,7 @@ export function DoctorAssistantPage() {
   if (isLoading) {
     return (
       <div className="space-y-6">
-        <PageHeader title="AI Clinical Assistant" description="Loading your workspace…" />
+        <PageHeader title="AI Clinical Assistant" description="Loading the assistant…" />
         <ListSkeleton rows={3} />
       </div>
     );
@@ -399,7 +399,10 @@ export function DoctorAssistantPage() {
             </CardHeader>
             <CardContent className="text-muted-foreground space-y-2 text-xs">
               <p>The assistant does not diagnose, prescribe or write to records on its own.</p>
-              <p>Image and document uploads are acknowledged, not interpreted, in this demo.</p>
+              <p>
+                Images are sent to the vision model. Documents are listed but not parsed, so
+                their contents are not read.
+              </p>
               <p>Only patients in your care can be selected, and access is re-checked on send.</p>
               <Button variant="link" size="sm" className="h-auto p-0" asChild>
                 <Link to="/doctor/patients">Review authorized patients</Link>
