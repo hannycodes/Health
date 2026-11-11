@@ -50,7 +50,14 @@ type StatusFilter = "ALL" | AccountStatus;
 const inviteSchema = z.object({
   fullName: z.string().min(3, "Enter the administrator's full name"),
   email: z.string().min(1, "Email is required").email("Enter a valid email"),
-  phone: z.string().optional(),
+  phone: z
+    .string()
+    .trim()
+    .refine(
+      (value) => value === "" || /^[+0-9][0-9\s()-]{6,18}$/.test(value),
+      "Use digits, spaces, + or -",
+    )
+    .optional(),
   hospitalId: z.string().min(1, "Choose an approved hospital"),
 });
 
@@ -188,7 +195,34 @@ export function AdministratorsPage() {
                 </div>
                 <div className="space-y-1.5">
                   <Label htmlFor="invite-phone">Phone (optional)</Label>
-                  <Input id="invite-phone" type="tel" {...form.register("phone")} />
+                  <Input
+                    id="invite-phone"
+                    type="tel"
+                    inputMode="tel"
+                    placeholder="+251 911 234 567"
+                    aria-invalid={!!form.formState.errors.phone}
+                    onKeyDown={(event) => {
+                      if (
+                        event.key.length === 1 &&
+                        !/[0-9+()\s-]/.test(event.key)
+                      ) {
+                        event.preventDefault();
+                      }
+                    }}
+                    onInput={(event) => {
+                      const target = event.currentTarget;
+                      const cleaned = target.value.replace(/[^0-9+()\s-]/g, "");
+                      if (cleaned !== target.value) {
+                        target.value = cleaned;
+                      }
+                    }}
+                    {...form.register("phone")}
+                  />
+                  {form.formState.errors.phone && (
+                    <p className="text-destructive text-xs">
+                      {form.formState.errors.phone.message}
+                    </p>
+                  )}
                 </div>
                 <div className="space-y-1.5">
                   <Label htmlFor="invite-hospital">Assigned hospital</Label>

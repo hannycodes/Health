@@ -313,6 +313,12 @@ async function handle(req: IncomingMessage, res: ServerResponse) {
         phone: text(body.phone).trim(),
         dateOfBirth: text(body.dateOfBirth) || undefined,
         gender: body.gender as Patient["gender"],
+        age: typeof body.age === "number" ? body.age : undefined,
+        weightKg: typeof body.weightKg === "number" ? body.weightKg : undefined,
+        heightCm: typeof body.heightCm === "number" ? body.heightCm : undefined,
+        medicalHistory: text(body.medicalHistory) || undefined,
+        allergies: text(body.allergies) || undefined,
+        currentMedications: text(body.currentMedications) || undefined,
         status: "ACTIVE",
         createdAt: nowISO(),
       };

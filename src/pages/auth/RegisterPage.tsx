@@ -24,19 +24,45 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
 import { useAuth } from "@/hooks/useAuth";
 import { getApiErrorMessage } from "@/lib/http";
 
+const PHONE_ALLOWED = /[0-9+()\s-]/;
+
+const measurement = (label: string, min: number, max: number) =>
+  z
+    .string()
+    .trim()
+    .min(1, `${label} is required`)
+    .refine(
+      (value) => /^\d+$/.test(value) && Number(value) >= min && Number(value) <= max,
+      `${label} must be between ${min} and ${max}`,
+    );
+
 const registerSchema = z
   .object({
-    fullName: z.string().min(3, "Enter your full name"),
+    fullName: z
+      .string()
+      .trim()
+      .min(3, "Enter your full name")
+      .regex(
+        /^[\p{L}][\p{L}'’.-]*(?:\s[\p{L}'’.-]+)*$/u,
+        "Use letters only for your name",
+      ),
     email: z.string().min(1, "Email is required").email("Enter a valid email"),
     phone: z
       .string()
       .min(7, "Enter a valid phone number")
-      .regex(/^[+0-9][0-9\s-]{6,18}$/, "Use digits, spaces, + or -"),
+      .regex(/^[+0-9][0-9\s()-]{6,18}$/, "Use digits, spaces, + or -"),
+    age: measurement("Age", 1, 120),
+    weightKg: measurement("Weight", 20, 300),
+    heightCm: measurement("Height", 50, 250),
     dateOfBirth: z.string().optional(),
     gender: z.enum(["MALE", "FEMALE", "OTHER"]).optional(),
+    medicalHistory: z.string().trim().max(1000).optional(),
+    allergies: z.string().trim().max(500).optional(),
+    currentMedications: z.string().trim().max(500).optional(),
     password: z
       .string()
       .min(8, "Use at least 8 characters")
@@ -67,8 +93,14 @@ export function RegisterPage() {
       fullName: "",
       email: "",
       phone: "",
+      age: "",
+      weightKg: "",
+      heightCm: "",
       dateOfBirth: "",
       gender: undefined,
+      medicalHistory: "",
+      allergies: "",
+      currentMedications: "",
       password: "",
       confirmPassword: "",
       acceptedTerms: false,
@@ -82,8 +114,14 @@ export function RegisterPage() {
         fullName: values.fullName,
         email: values.email,
         phone: values.phone,
+        age: Number(values.age),
+        weightKg: Number(values.weightKg),
+        heightCm: Number(values.heightCm),
         dateOfBirth: values.dateOfBirth || undefined,
         gender: values.gender,
+        medicalHistory: values.medicalHistory?.trim() || undefined,
+        allergies: values.allergies?.trim() || undefined,
+        currentMedications: values.currentMedications?.trim() || undefined,
         password: values.password,
         acceptedTerms: values.acceptedTerms,
         acceptedPrivacy: values.acceptedPrivacy,
@@ -110,8 +148,6 @@ export function RegisterPage() {
         <CardContent className="space-y-4">
           <p className="text-muted-foreground text-sm">
             Sign in with the password you chose to reach your patient dashboard.
-            {/** The mock backend verifies accounts immediately; a real backend
-             * may send a verification e-mail first. */}
           </p>
           <Button asChild className="w-full">
             <Link to="/login">Continue to sign in</Link>
@@ -171,9 +207,22 @@ export function RegisterPage() {
               <Input
                 id="phone"
                 type="tel"
+                inputMode="tel"
                 autoComplete="tel"
                 placeholder="+251 911 234 567"
                 aria-invalid={!!form.formState.errors.phone}
+                onKeyDown={(event) => {
+                  if (event.key.length === 1 && !PHONE_ALLOWED.test(event.key)) {
+                    event.preventDefault();
+                  }
+                }}
+                onInput={(event) => {
+                  const target = event.currentTarget;
+                  const cleaned = target.value.replace(/[^0-9+()\s-]/g, "");
+                  if (cleaned !== target.value) {
+                    target.value = cleaned;
+                  }
+                }}
                 {...form.register("phone")}
               />
               {form.formState.errors.phone && (
@@ -216,6 +265,99 @@ export function RegisterPage() {
                   </Select>
                 )}
               />
+            </div>
+          </div>
+
+          <div className="space-y-3 rounded-lg border p-3">
+            <p className="text-sm font-medium">Health profile</p>
+            <div className="grid gap-4 sm:grid-cols-3">
+              <div className="space-y-1.5">
+                <Label htmlFor="age">Age (years)</Label>
+                <Input
+                  id="age"
+                  type="number"
+                  inputMode="numeric"
+                  min={1}
+                  max={120}
+                  placeholder="32"
+                  aria-invalid={!!form.formState.errors.age}
+                  {...form.register("age")}
+                />
+                {form.formState.errors.age && (
+                  <p className="text-destructive text-xs">
+                    {form.formState.errors.age.message}
+                  </p>
+                )}
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="weightKg">Weight (kg)</Label>
+                <Input
+                  id="weightKg"
+                  type="number"
+                  inputMode="numeric"
+                  min={20}
+                  max={300}
+                  placeholder="70"
+                  aria-invalid={!!form.formState.errors.weightKg}
+                  {...form.register("weightKg")}
+                />
+                {form.formState.errors.weightKg && (
+                  <p className="text-destructive text-xs">
+                    {form.formState.errors.weightKg.message}
+                  </p>
+                )}
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="heightCm">Height (cm)</Label>
+                <Input
+                  id="heightCm"
+                  type="number"
+                  inputMode="numeric"
+                  min={50}
+                  max={250}
+                  placeholder="170"
+                  aria-invalid={!!form.formState.errors.heightCm}
+                  {...form.register("heightCm")}
+                />
+                {form.formState.errors.heightCm && (
+                  <p className="text-destructive text-xs">
+                    {form.formState.errors.heightCm.message}
+                  </p>
+                )}
+              </div>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label htmlFor="medicalHistory">Critical medical history</Label>
+              <Textarea
+                id="medicalHistory"
+                rows={3}
+                placeholder="Chronic conditions, past surgeries or anything your doctor should know. Write “None” if not applicable."
+                {...form.register("medicalHistory")}
+              />
+              <p className="text-muted-foreground text-xs">
+                Your age, weight and height help clinicians interpret your vital
+                signs. You can update these later from your profile.
+              </p>
+            </div>
+
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="space-y-1.5">
+                <Label htmlFor="allergies">Known allergies (optional)</Label>
+                <Input
+                  id="allergies"
+                  placeholder="Medication, food or other allergies"
+                  {...form.register("allergies")}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="currentMedications">Current medications (optional)</Label>
+                <Input
+                  id="currentMedications"
+                  placeholder="Medicines you take regularly"
+                  {...form.register("currentMedications")}
+                />
+              </div>
             </div>
           </div>
 
