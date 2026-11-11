@@ -325,23 +325,46 @@ function recommendationsFor(specialty) {
 
 async function callProvider(payload) {
   const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), 45_000);
+  const timeoutMs = Number(process.env.AI_TIMEOUT_MS) || 90_000;
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
   try {
-    const response = await fetch(`${AI_BASE}/chat/completions`, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${AI_KEY}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(payload),
-      signal: controller.signal,
-    });
-    if (!response.ok) {
+    let attempt = 0;
+    for (;;) {
+      let response;
+      try {
+        response = await fetch(`${AI_BASE}/chat/completions`, {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${AI_KEY}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(payload),
+          signal: controller.signal,
+        });
+      } catch (error) {
+        if (error?.name === "AbortError") {
+          fail(504, "The medical AI took too long to answer. Please try again.");
+        }
+        console.error("AI request failed", error?.message);
+        fail(502, "The medical AI service could not answer right now.");
+      }
+
+      if (response.ok) return await response.json();
+
       const detail = await response.text().catch(() => "");
       console.error("AI provider error", response.status, detail.slice(0, 500));
+
+      // The free tier rate-limits bursts: wait once, then explain plainly.
+      if (response.status === 429 && attempt === 0) {
+        attempt += 1;
+        await new Promise((resolve) => setTimeout(resolve, 5000));
+        continue;
+      }
+      if (response.status === 429) {
+        fail(503, "The free AI tier is busy right now. Wait a minute and try again.");
+      }
       fail(502, "The medical AI service could not answer right now.");
     }
-    return await response.json();
   } finally {
     clearTimeout(timer);
   }
