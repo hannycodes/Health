@@ -466,6 +466,64 @@ async function callAIProvider(payload: unknown): Promise<Record<string, unknown>
   }
 }
 
+const LANGUAGE_RULE: Record<"en" | "am", string> = {
+  en: "The patient wrote in English. Write every returned string in English.",
+  am: "አስፈላጊ፡ ሁሉንም መልስ በአማርኛ ብቻ በኢትዮጵያ ፊደል ይጻፉ። IMPORTANT: every returned string must be written in Amharic (አማርኛ) using Ethiopic script. Do not write English sentences.",
+};
+
+async function askModel(
+  userContent: Array<Record<string, unknown>>,
+  language: "en" | "am",
+  isRetry = false,
+) {
+  const messages: Array<Record<string, unknown>> = [
+    { role: "system", content: `${LANGUAGE_RULE[language]}\n\n${SYSTEM_PROMPT}` },
+    { role: "user", content: userContent },
+  ];
+  if (isRetry) {
+    messages.push({
+      role: "system",
+      content:
+        "Your previous draft was rejected because it was not in Amharic. Rewrite every string in Amharic using Ethiopic script. Do not use English.",
+    });
+  }
+
+  const data = await callAIProvider({
+    model: aiConfig().model,
+    temperature: isRetry ? 0.1 : 0.2,
+    response_format: { type: "json_object" },
+    messages,
+  });
+
+  const choices = (
+    data as { choices?: Array<{ message?: { content?: string } }> }
+  ).choices;
+  const raw = choices?.[0]?.message?.content ?? "";
+  return { raw, parsed: extractJson(raw) ?? {} };
+}
+
+function replyText(raw: string, parsed: Record<string, unknown>) {
+  return typeof parsed.message === "string" && parsed.message.trim()
+    ? parsed.message.trim()
+    : raw.trim();
+}
+
+/**
+ * The free GLM vision model reasons well in English but produces incoherent
+ * Amharic. Rather than return garbled or English medical guidance, tell an
+ * Amharic-speaking patient plainly and safely that the answer must be
+ * requested in English until a funded Amharic-capable model is configured
+ * (ZAI_MODEL, for example a glm-4.6 text model with credit).
+ */
+const AMHARIC_UNAVAILABLE = {
+  message:
+    "ይቅርታ፣ አሁን ስለዚህ ጉዳይ ትክክለኛ መልስ በአማርኛ መስጠት አልተቻለም። እባክዎ በእንግሊዝኛ እንደገና ይጠይቁ ወይም በኋላ ይሞክሩ። ምልክቶቹ አሳሳቢ ከሆኑ ወዲያውኑ ሐኪም ያማክሩ።",
+  recommendations: [
+    "ምልክቶቹ አሳሳቢ ከሆኑ ወዲያውኑ ሐኪም ያማክሩ።",
+    "ትክክለኛ መልስ ለማግኘት በእንግሊዝኛ እንደገና ይጠይቁ።",
+  ],
+};
+
 async function generateAIReply(input: {
   message: string;
   patientContext: unknown;
@@ -505,21 +563,26 @@ async function generateAIReply(input: {
     userContent.push({ type: "image_url", image_url: { url: image.dataUrl } });
   });
 
-  const data = await callAIProvider({
-    model: aiConfig().model,
-    temperature: 0.2,
-    response_format: { type: "json_object" },
-    messages: [
-      { role: "system", content: SYSTEM_PROMPT },
-      { role: "user", content: userContent },
-    ],
-  });
+  let { raw, parsed } = await askModel(userContent, language);
+  const isAmharic = language === "am";
 
-  const choices = (
-    data as { choices?: Array<{ message?: { content?: string } }> }
-  ).choices;
-  const raw = choices?.[0]?.message?.content ?? "";
-  const parsed = extractJson(raw) ?? {};
+  // The free vision model occasionally ignores the language rule. Retry once
+  // with a corrective instruction so an Amharic patient never gets English.
+  if (isAmharic && !ETHIOPIC_SCRIPT.test(replyText(raw, parsed))) {
+    ({ raw, parsed } = await askModel(userContent, language, true));
+  }
+  if (isAmharic && !ETHIOPIC_SCRIPT.test(replyText(raw, parsed))) {
+    return {
+      message: AMHARIC_UNAVAILABLE.message,
+      urgency: "INFORMATIONAL" as CareUrgency,
+      followUpQuestions: [] as string[],
+      recommendations: AMHARIC_UNAVAILABLE.recommendations,
+      recommendedDoctorIds: [] as string[],
+      recommendedHospitalIds: [] as string[],
+      disclaimer: AI_DISCLAIMER,
+    };
+  }
+
   const urgency = CARE_URGENCIES.includes(parsed.urgency as CareUrgency)
     ? (parsed.urgency as CareUrgency)
     : "ROUTINE";
@@ -530,10 +593,7 @@ async function generateAIReply(input: {
   const recommended = recommendationsFor(specialty);
 
   return {
-    message:
-      typeof parsed.message === "string" && parsed.message.trim()
-        ? parsed.message.trim()
-        : raw.trim(),
+    message: replyText(raw, parsed),
     urgency,
     followUpQuestions: Array.isArray(parsed.followUpQuestions)
       ? parsed.followUpQuestions.slice(0, 4).map(String)
