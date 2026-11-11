@@ -106,10 +106,15 @@ src/
 
 ## What is implemented and what is not
 
-Implemented: design system, brand/theme, shared layouts and navigation, auth + role
-guards, patient screens (dashboard, hospitals, doctors, AI navigator, appointments,
-medical history, profile), appointment booking/cancel flow, shared appointment service
-with cross-role visibility, seeded demo data, tests.
+Implemented: official logo integration, custom stethoscope favicon, public landing page,
+design system, brand/theme, shared layouts and navigation, auth + role guards, patient
+screens (dashboard, hospitals, doctors, AI navigator, appointments, medical history,
+profile), appointment booking/cancel flow, shared appointment service with cross-role
+visibility, seeded demo data, tests.
+
+Public route: `/` renders the landing page. Authenticated demo routes live under
+`/patient`, `/doctor`, `/hospital-admin` and `/super-admin`, and `/login` is the single
+sign-in entry point used by every landing-page call to action.
 
 Scaffolded for the feature owners: doctor, hospital admin and super admin screens render
 a `ScaffoldPage` placeholder inside their real layout and navigation. See
