@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { act, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { RouterProvider, createMemoryRouter } from "react-router-dom";
 
@@ -200,6 +200,55 @@ describe("patient pages", () => {
     });
     expect(labels.length).toBeGreaterThan(0);
   }, 20_000);
+
+  it("replaces, rather than repeats, cumulative dictation results", async () => {
+    interface DictationEvent {
+      results: Array<Array<{ transcript: string }>>;
+    }
+
+    const recognition = {
+      lang: "",
+      interimResults: false,
+      continuous: false,
+      onresult: null as ((event: DictationEvent) => void) | null,
+      onend: null as (() => void) | null,
+      onerror: null as (() => void) | null,
+      start() {
+        // The composer only needs an instance it can call stop() on.
+      },
+      stop() {
+        recognition.onend?.();
+      },
+    };
+
+    function FakeRecognition() {
+      return recognition;
+    }
+
+    Object.defineProperty(window, "SpeechRecognition", {
+      configurable: true,
+      value: FakeRecognition,
+    });
+
+    await signInPatient();
+    renderAt("/patient/assistant");
+
+    const composer = await screen.findByLabelText(
+      /message the ai health assistant/i,
+    );
+    await userEvent.click(screen.getByRole("button", { name: /dictate a message/i }));
+
+    act(() => recognition.onresult?.({ results: [[{ transcript: "I got this" }]] }));
+    act(() =>
+      recognition.onresult?.({
+        results: [[{ transcript: "I got this" }], [{ transcript: " today" }]],
+      }),
+    );
+
+    expect((composer as HTMLTextAreaElement).value).toBe("I got this today");
+
+    delete (window as unknown as { SpeechRecognition?: unknown }).SpeechRecognition;
+  });
 
   it("lists the patient's upcoming appointments", async () => {
     await signInPatient();

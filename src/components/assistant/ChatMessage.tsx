@@ -1,4 +1,5 @@
-import { ImageOff } from "lucide-react";
+import { useEffect, useState } from "react";
+import { ImageOff, Square, Volume2 } from "lucide-react";
 import { Link } from "react-router-dom";
 
 import { Badge } from "@/components/ui/badge";
@@ -6,6 +7,9 @@ import { Button } from "@/components/ui/button";
 import type { AIChatMessage } from "@/types";
 import { cn } from "@/lib/utils";
 import { URGENCY_META } from "./urgency";
+
+/** Lets one reply take over playback from another. */
+const SPEAK_EVENT = "myhealth:speak-reply";
 
 interface ChatMessageProps {
   message: AIChatMessage;
@@ -25,6 +29,54 @@ function formatClock(iso: string) {
 export function ChatMessage({ message, onFollowUp, followUpsDisabled }: ChatMessageProps) {
   const isPatient = message.role === "PATIENT";
   const urgency = message.urgency ? URGENCY_META[message.urgency] : null;
+  const [isSpeaking, setIsSpeaking] = useState(false);
+  const canSpeak =
+    !isPatient &&
+    message.content.length > 0 &&
+    typeof window !== "undefined" &&
+    "speechSynthesis" in window;
+
+  useEffect(() => {
+    function stopForOtherReply(event: Event) {
+      if ((event as CustomEvent<string>).detail !== message.id) setIsSpeaking(false);
+    }
+    window.addEventListener(SPEAK_EVENT, stopForOtherReply);
+    return () => window.removeEventListener(SPEAK_EVENT, stopForOtherReply);
+  }, [message.id]);
+
+  useEffect(() => {
+    return () => {
+      if (typeof window !== "undefined" && "speechSynthesis" in window) {
+        window.speechSynthesis.cancel();
+      }
+    };
+  }, []);
+
+  function toggleSpeech() {
+    if (typeof window === "undefined" || !("speechSynthesis" in window)) return;
+    const synth = window.speechSynthesis;
+    if (isSpeaking) {
+      synth.cancel();
+      setIsSpeaking(false);
+      return;
+    }
+
+    synth.cancel();
+    const amharic = /[\u1200-\u137F]/.test(message.content);
+    const utterance = new SpeechSynthesisUtterance(message.content);
+    utterance.lang = amharic ? "am-ET" : "en-US";
+    // Prefer an installed voice for the reply's language; fall back to the
+    // engine default when the device has none.
+    const voice = synth
+      .getVoices()
+      .find((candidate) => candidate.lang.toLowerCase().startsWith(amharic ? "am" : "en"));
+    if (voice) utterance.voice = voice;
+    utterance.onend = () => setIsSpeaking(false);
+    utterance.onerror = () => setIsSpeaking(false);
+    window.dispatchEvent(new CustomEvent(SPEAK_EVENT, { detail: message.id }));
+    setIsSpeaking(true);
+    synth.speak(utterance);
+  }
 
   return (
     <li className={cn("flex gap-2.5", isPatient ? "justify-end" : "justify-start")}>
@@ -133,6 +185,23 @@ export function ChatMessage({ message, onFollowUp, followUpsDisabled }: ChatMess
           )}
         >
           <span>{formatClock(message.createdAt)}</span>
+          {canSpeak && (
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="text-muted-foreground hover:text-foreground -my-1 size-6"
+              onClick={toggleSpeech}
+              aria-label={isSpeaking ? "Stop reading the reply" : "Read the reply aloud"}
+              aria-pressed={isSpeaking}
+            >
+              {isSpeaking ? (
+                <Square className="size-3" aria-hidden="true" />
+              ) : (
+                <Volume2 className="size-3" aria-hidden="true" />
+              )}
+            </Button>
+          )}
           {message.isMock && (
             <Badge variant="outline" className="h-4 px-1.5 text-[10px]">
               Offline sample — not AI

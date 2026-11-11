@@ -322,8 +322,8 @@ export interface AIHealthRequest {
   message: string;
   patientContext: PatientHealthContext;
   imageIds?: string[];
-  /** Reply language for the assistant. */
-  language?: "en" | "am";
+  /** Preferred reply language; "auto" follows the language of the message. */
+  language?: "auto" | "en" | "am";
 }
 
 export interface AIHealthResponse {

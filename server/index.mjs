@@ -246,6 +246,7 @@ Hard rules:
 - If symptoms could be life-threatening, set urgency to "EMERGENCY" and tell the patient to contact emergency services immediately.
 - Be calm, plain and concise. No markdown headings. No promises.
 - Use the patient context only when it is provided; never invent missing values.
+- Write every string in the same language as the patient's latest message: English or Amharic (አማርኛ). Never answer in a different language.
 Return ONLY a JSON object with this shape:
 {"message":"string","urgency":"EMERGENCY|URGENT|ROUTINE|INFORMATIONAL","followUpQuestions":["..."],"recommendations":["..."],"recommendedSpecialty":"one of ${SPECIALTIES.join("|")} or empty string","disclaimer":"string"}`;
 
@@ -260,6 +261,19 @@ const DISCLAIMER =
 function isEmergency(text) {
   const lower = (text ?? "").toLowerCase();
   return EMERGENCY_PATTERNS.some((pattern) => lower.includes(pattern));
+}
+
+const ETHIOPIC_SCRIPT = /[\u1200-\u137F]/;
+
+/**
+ * The patient may type or dictate in English or Amharic. Ethiopic script is a
+ * reliable signal for Amharic; otherwise an explicit choice wins, and "auto"
+ * falls back to English.
+ */
+function detectLanguage(message, requested) {
+  if (ETHIOPIC_SCRIPT.test(String(message ?? ""))) return "am";
+  if (requested === "am" || requested === "en") return requested;
+  return "en";
 }
 
 function languageName(language) {
@@ -873,7 +887,7 @@ async function handle(req, res) {
       message = "",
       patientContext = {},
       imageIds = [],
-      language = "en",
+      language = "auto",
     } = body;
 
     if (user.role === "PATIENT" && patientId !== user.id) {
@@ -897,7 +911,13 @@ async function handle(req, res) {
       return send(res, 403, { message: "You do not have access to this conversation." });
     }
 
-    const reply = await generateReply({ message, patientContext, language, imageIds });
+    const replyLanguage = detectLanguage(message, language);
+    const reply = await generateReply({
+      message,
+      patientContext,
+      language: replyLanguage,
+      imageIds,
+    });
     const timestamp = nowISO();
     if (!conversation) {
       const title = String(message).trim().slice(0, 60) || "Image consultation";

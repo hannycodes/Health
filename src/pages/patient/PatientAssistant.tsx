@@ -2,7 +2,10 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { AlertTriangle, Plus, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 
-import { ChatComposer } from "@/components/assistant/ChatComposer";
+import {
+  ChatComposer,
+  type LanguageChoice,
+} from "@/components/assistant/ChatComposer";
 import { ChatMessage } from "@/components/assistant/ChatMessage";
 import { ImageConsentDialog } from "@/components/assistant/ImageConsentDialog";
 import { URGENCY_META } from "@/components/assistant/urgency";
@@ -77,7 +80,7 @@ export function PatientAssistant() {
   const [error, setError] = useState<string | null>(null);
   const [status, setStatus] = useState<string | null>(null);
   const [isSending, setIsSending] = useState(false);
-  const [language, setLanguage] = useState<"en" | "am">("en");
+  const [language, setLanguage] = useState<LanguageChoice>("auto");
 
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -218,7 +221,7 @@ export function PatientAssistant() {
           <div className="flex items-center gap-2">
             <Badge variant="outline" className="gap-1.5">
               <span className="size-1.5 rounded-full bg-emerald-500" aria-hidden="true" />
-              Medical AI · English & አማርኛ
+              Medical AI · English & አማርኛ · replies in your language
             </Badge>
             <Button variant="outline" onClick={startNewConversation}>
               <Plus className="size-4" aria-hidden="true" />

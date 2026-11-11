@@ -23,6 +23,9 @@ interface SpeechRecognitionLike {
 
 type SpeechConstructor = new () => SpeechRecognitionLike;
 
+/** "auto" replies in whatever language the patient writes or dictates. */
+export type LanguageChoice = "auto" | "en" | "am";
+
 interface ChatComposerProps {
   value: string;
   onChange: (value: string) => void;
@@ -35,8 +38,8 @@ interface ChatComposerProps {
   error?: string | null;
   accept: string;
   maxLabel: string;
-  language: "en" | "am";
-  onLanguageChange: (language: "en" | "am") => void;
+  language: LanguageChoice;
+  onLanguageChange: (language: LanguageChoice) => void;
 }
 
 /**
@@ -62,6 +65,7 @@ export function ChatComposer({
   const [isDragging, setIsDragging] = useState(false);
   const [isListening, setIsListening] = useState(false);
   const recognitionRef = useRef<SpeechRecognitionLike | null>(null);
+  const dictationBaseRef = useRef("");
   const valueRef = useRef(value);
 
   useEffect(() => {
@@ -100,20 +104,34 @@ export function ChatComposer({
     }
 
     const recognition = new speechConstructor();
-    recognition.lang = language === "am" ? "am-ET" : "en-US";
+    const speaksAmharic =
+      language === "am" ||
+      (language === "auto" &&
+        (/[\u1200-\u137F]/.test(valueRef.current) ||
+          (typeof navigator !== "undefined" &&
+            navigator.language.toLowerCase().startsWith("am"))));
+    recognition.lang = speaksAmharic ? "am-ET" : "en-US";
     recognition.interimResults = true;
     recognition.continuous = false;
+    // Every speech event carries the *whole* transcript so far. Keep the text
+    // that existed before dictation started and replace, never append, or the
+    // same words pile up on each interim result.
+    dictationBaseRef.current = valueRef.current.trim();
     recognition.onresult = (event) => {
       let transcript = "";
       for (let index = 0; index < event.results.length; index += 1) {
         transcript += event.results[index][0]?.transcript ?? "";
       }
-      const next = `${valueRef.current} ${transcript}`.trim();
+      const next = `${dictationBaseRef.current} ${transcript}`.trim();
       valueRef.current = next;
       onChange(next);
     };
-    recognition.onerror = () => setIsListening(false);
-    recognition.onend = () => setIsListening(false);
+    const stop = () => {
+      setIsListening(false);
+      recognitionRef.current = null;
+    };
+    recognition.onerror = stop;
+    recognition.onend = stop;
     recognitionRef.current = recognition;
     setIsListening(true);
     recognition.start();
@@ -173,12 +191,14 @@ export function ChatComposer({
         )}
       >
         <select
-          aria-label="Reply language"
+          aria-label="Language"
+          title="Replies follow the language you use. Pick አማ or EN to dictate in that language."
           value={language}
-          onChange={(event) => onLanguageChange(event.target.value as "en" | "am")}
+          onChange={(event) => onLanguageChange(event.target.value as LanguageChoice)}
           disabled={isSending}
           className="border-input bg-background text-foreground mb-1 h-7 shrink-0 rounded-md border px-1.5 text-[11px]"
         >
+          <option value="auto">Auto</option>
           <option value="en">EN</option>
           <option value="am">አማ</option>
         </select>
@@ -243,7 +263,8 @@ export function ChatComposer({
 
       <div className="text-muted-foreground flex flex-wrap items-center justify-between gap-1 text-[11px]">
         <span>
-          Enter sends · Shift + Enter adds a line · JPG, PNG or WebP up to {maxLabel}
+          Enter sends · Shift + Enter adds a line · replies match your language · JPG, PNG or
+          WebP up to {maxLabel}
           {!speechConstructor && " · Voice input is not supported in this browser"}
         </span>
         {statusLabel && (
