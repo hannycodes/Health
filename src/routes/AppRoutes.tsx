@@ -1,5 +1,16 @@
 import { Navigate, type RouteObject } from "react-router-dom";
 
+import { AdminWorkforcePage } from "@/modules/workforce/AdminPage";
+import {
+  HospitalWorkforceAnalyticsPage,
+  HospitalWorkforceApplicantsPage,
+  HospitalWorkforceCreatePage,
+  HospitalWorkforceDashboardPage,
+  HospitalWorkforceInterviewsPage,
+  HospitalWorkforceOffersPage,
+  HospitalWorkforceOpportunitiesPage,
+} from "@/modules/workforce/HospitalPages";
+import { workforceRoutes } from "@/modules/workforce/routes";
 import { AuthLayout } from "@/layouts/AuthLayout";
 import { DoctorLayout } from "@/layouts/DoctorLayout";
 import { HospitalAdminLayout } from "@/layouts/HospitalAdminLayout";
@@ -241,10 +252,30 @@ export const appRoutes: RouteObject[] = [
           { path: "activity", element: <AdminActivityPage /> },
           { path: "notifications", element: <AdminNotificationsPage /> },
           { path: "settings", element: <AdminSettingsPage /> },
+          { path: "workforce", element: <AdminWorkforcePage /> },
         ],
       },
     ],
   },
+  {
+    element: <ProtectedRoute allowedRoles={["HOSPITAL_ADMIN"]} />,
+    children: [
+      {
+        path: "/hospital/workforce",
+        element: <HospitalAdminLayout />,
+        children: [
+          { index: true, element: <HospitalWorkforceDashboardPage /> },
+          { path: "opportunities", element: <HospitalWorkforceOpportunitiesPage /> },
+          { path: "opportunities/create", element: <HospitalWorkforceCreatePage /> },
+          { path: "applicants", element: <HospitalWorkforceApplicantsPage /> },
+          { path: "interviews", element: <HospitalWorkforceInterviewsPage /> },
+          { path: "offers", element: <HospitalWorkforceOffersPage /> },
+          { path: "analytics", element: <HospitalWorkforceAnalyticsPage /> },
+        ],
+      },
+    ],
+  },
+  ...workforceRoutes,
   // Legacy path kept as a redirect so older links and seeded notifications work.
   { path: "/super-admin", element: <Navigate to="/admin/dashboard" replace /> },
   { path: "/super-admin/*", element: <Navigate to="/admin/dashboard" replace /> },

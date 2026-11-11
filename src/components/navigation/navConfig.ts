@@ -2,6 +2,7 @@ import {
   Activity,
   BarChart3,
   Bell,
+  BriefcaseBusiness,
   Building2,
   CalendarDays,
   CalendarRange,
@@ -57,6 +58,7 @@ export const NAV_BY_ROLE: Record<Role, NavItem[]> = {
     { label: "Appointments", to: "/hospital-admin/appointments", icon: CalendarDays },
     { label: "Hospital Profile", to: "/hospital-admin/profile", icon: Building2 },
     { label: "Capacity", to: "/hospital-admin/capacity", icon: ClipboardList },
+    { label: "Workforce", to: "/hospital/workforce", icon: BriefcaseBusiness },
   ],
   SUPER_ADMIN: [
     {
@@ -75,6 +77,7 @@ export const NAV_BY_ROLE: Record<Role, NavItem[]> = {
     { label: "Administrators", to: "/admin/administrators", icon: UserCog },
     { label: "Doctors", to: "/admin/doctors", icon: Stethoscope },
     { label: "Patients", to: "/admin/patients", icon: UsersRound },
+    { label: "Workforce", to: "/admin/workforce", icon: BriefcaseBusiness },
     { label: "Analytics", to: "/admin/analytics", icon: BarChart3 },
     { label: "Activity & audit", to: "/admin/activity", icon: Activity },
     { label: "Notifications", to: "/admin/notifications", icon: Bell },
