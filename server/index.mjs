@@ -407,11 +407,11 @@ async function handleTranscribe(req, res) {
     return;
   }
 
-  const contentType = (req.headers["content-type"] ?? "audio/webm").split(";")[0].trim();
+  const contentType = (req.headers["content-type"] ?? "audio/wav").split(";")[0].trim();
   const extension = AUDIO_EXTENSIONS[contentType];
   if (!extension) {
     sendJson(res, 415, {
-      error: `Unsupported audio type "${contentType}". Use webm, ogg, m4a, mp3, wav or flac.`,
+      error: `Unsupported audio type "${contentType}". Convert the recording to WAV or MP3 first.`,
     });
     return;
   }
