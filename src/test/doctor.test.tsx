@@ -153,6 +153,21 @@ describe("availability", () => {
 });
 
 describe("AI clinical assistant", () => {
+  // These tests exercise the demonstration adapter, so ensure the gateway probe
+  // resolves immediately as unconfigured instead of waiting on a real request.
+  beforeEach(() => {
+    resetAiStatus();
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(() => Promise.reject(new Error("gateway not running in unit tests"))),
+    );
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    resetAiStatus();
+  });
+
   it("labels every response and requires doctor review", async () => {
     const { response } = await clinicalAssistantService.send("doc-001", {
       message: "Summarize this patient's history",

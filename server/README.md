@@ -6,11 +6,13 @@ the browser bundle.
 
 ```bash
 # 1. Configure (server-side only — never a VITE_* variable)
-export AI_API_KEY=sk-...
-export AI_BASE_URL=https://api.openai.com/v1     # optional
-export AI_CHAT_MODEL=gpt-4.1                     # vision-capable
-export AI_TRANSCRIBE_MODEL=gpt-transcribe        # multilingual speech-to-text
-export AI_PORT=8787                              # optional
+#    Preferred: put these in the git-ignored .env and `npm run dev:ai`
+#    loads it automatically.
+AI_API_KEY=...
+AI_BASE_URL=https://api.z.ai/api/paas/v4   # default (Z.ai)
+AI_CHAT_MODEL=glm-4.5v                     # vision model
+AI_TRANSCRIBE_MODEL=glm-asr-2512           # speech model (WAV/MP3)
+AI_PORT=8787                               # optional
 
 # 2. Run it next to the frontend
 npm run dev:ai    # terminal 1
@@ -24,7 +26,7 @@ to its own origin.
 
 | Method | Path                 | Purpose                                            |
 | ------ | -------------------- | -------------------------------------------------- |
-| GET    | `/api/ai/status`     | Whether a key is configured, models, languages     |
+| GET    | `/api/ai/status`     | Whether a key is configured, provider, models      |
 | POST   | `/api/ai/clinical`   | Patient-context clinical reasoning (JSON in/out)   |
 | POST   | `/api/ai/transcribe` | Voice message → text (raw audio body, webm/m4a…)   |
 

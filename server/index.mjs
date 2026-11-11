@@ -20,9 +20,15 @@ import { createServer } from "node:http";
 
 const PORT = Number(process.env.AI_PORT ?? 8787);
 const API_KEY = process.env.AI_API_KEY ?? process.env.OPENAI_API_KEY ?? "";
-const BASE_URL = (process.env.AI_BASE_URL ?? "https://api.openai.com/v1").replace(/\/$/, "");
-const CHAT_MODEL = process.env.AI_CHAT_MODEL ?? "gpt-4.1";
-const TRANSCRIBE_MODEL = process.env.AI_TRANSCRIBE_MODEL ?? "gpt-transcribe";
+// Defaults target Z.ai's OpenAI-compatible endpoint: GLM-4.5V is the vision
+// model, GLM-ASR-2512 the speech model. Override with env vars for any other
+// OpenAI-compatible provider.
+const BASE_URL = (process.env.AI_BASE_URL ?? "https://api.z.ai/api/paas/v4").replace(
+  /\/$/,
+  "",
+);
+const CHAT_MODEL = process.env.AI_CHAT_MODEL ?? "glm-4.5v";
+const TRANSCRIBE_MODEL = process.env.AI_TRANSCRIBE_MODEL ?? "glm-asr-2512";
 const MAX_JSON_BYTES = 30 * 1024 * 1024;
 const MAX_AUDIO_BYTES = 25 * 1024 * 1024;
 const REQUEST_TIMEOUT_MS = 90_000;
@@ -253,6 +259,20 @@ async function callProvider(path, init) {
 }
 
 function providerError(status, detail) {
+  const outOfCredit = /insufficient balance|no resource package|recharge|quota/i.test(detail ?? "");
+
+  if (outOfCredit) {
+    return {
+      status: 402,
+      payload: {
+        error:
+          "The AI provider account has no remaining balance. Top up the provider account to enable live analysis.",
+        providerStatus: status,
+        detail,
+      },
+    };
+  }
+
   const message =
     status === 401 || status === 403
       ? "The AI provider rejected the configured API key."
@@ -296,17 +316,25 @@ async function handleClinical(req, res) {
     },
   ];
 
-  const upstream = await callProvider("/chat/completions", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      model: CHAT_MODEL,
-      messages,
-      temperature: 0.2,
-      max_tokens: 1800,
-      response_format: { type: "json_object" },
-    }),
-  });
+  const chatRequest = (jsonMode) =>
+    callProvider("/chat/completions", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        model: CHAT_MODEL,
+        messages,
+        temperature: 0.2,
+        max_tokens: 1800,
+        ...(jsonMode ? { response_format: { type: "json_object" } } : {}),
+      }),
+    });
+
+  let upstream = await chatRequest(true);
+  if (!upstream.ok && upstream.status === 400) {
+    // Some OpenAI-compatible providers reject response_format; retry plainly
+    // and rely on the prompt plus the tolerant parser below.
+    upstream = await chatRequest(false);
+  }
 
   if (!upstream.ok) {
     let detail = "";
@@ -354,14 +382,14 @@ async function handleClinical(req, res) {
   });
 }
 
+// The speech model accepts WAV and MP3. The browser converts recordings to
+// mono 16 kHz WAV before upload, so anything else is rejected explicitly.
 const AUDIO_EXTENSIONS = {
-  "audio/webm": "webm",
-  "audio/ogg": "ogg",
-  "audio/mp4": "m4a",
-  "audio/mpeg": "mp3",
   "audio/wav": "wav",
   "audio/x-wav": "wav",
-  "audio/flac": "flac",
+  "audio/wave": "wav",
+  "audio/mpeg": "mp3",
+  "audio/mp3": "mp3",
 };
 
 async function handleTranscribe(req, res) {
@@ -394,8 +422,17 @@ async function handleTranscribe(req, res) {
   const form = new FormData();
   form.append("file", new Blob([audio], { type: contentType }), `consultation.${extension}`);
   form.append("model", TRANSCRIBE_MODEL);
-  form.append("response_format", "json");
-  if (language) form.append("language", language);
+  form.append("stream", "false");
+  // GLM-ASR auto-detects the language; the documented way to bias detection is
+  // a short prompt written in the expected language.
+  if (language) {
+    form.append(
+      "prompt",
+      language === "am"
+        ? "የሕክምና ውይይት። በአማርኛ ጻፍ።"
+        : "Clinical consultation. Transcribe in English.",
+    );
+  }
 
   const upstream = await callProvider("/audio/transcriptions", {
     method: "POST",
@@ -438,7 +475,7 @@ const server = createServer(async (req, res) => {
     if (url.pathname === "/api/ai/status" && req.method === "GET") {
       sendJson(res, 200, {
         configured: Boolean(API_KEY),
-        provider: "openai-compatible",
+        provider: new URL(BASE_URL).host,
         chatModel: API_KEY ? CHAT_MODEL : null,
         transcribeModel: API_KEY ? TRANSCRIBE_MODEL : null,
         languages: ["en", "am"],

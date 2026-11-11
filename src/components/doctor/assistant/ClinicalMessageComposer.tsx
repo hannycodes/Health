@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import type { AiLanguage } from "@/features/doctor/services/aiGateway";
+import { prepareForTranscription } from "@/features/doctor/utils/audio";
 import {
   ACCEPTED_DOCUMENT_TYPES,
   ACCEPTED_IMAGE_TYPES,
@@ -107,7 +108,15 @@ export function ClinicalMessageComposer({
           onVoiceError("The recording was empty. Try again.");
           return;
         }
-        onVoiceRecorded(blob);
+        // The speech model takes WAV/MP3, so prepare the browser recording
+        // before it is uploaded.
+        void prepareForTranscription(blob)
+          .then(onVoiceRecorded)
+          .catch(() =>
+            onVoiceError(
+              "Could not prepare that recording for transcription. Try a shorter message.",
+            ),
+          );
       };
 
       instance.start();

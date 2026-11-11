@@ -28,6 +28,9 @@ export default defineConfig({
   },
   test: {
     globals: true,
+    // Page-level tests render the full router and mock service layer; the
+    // default 5s is tight on a cold module graph.
+    testTimeout: 15_000,
     environment: "jsdom",
     setupFiles: ["./src/test/setup.ts"],
     css: true,

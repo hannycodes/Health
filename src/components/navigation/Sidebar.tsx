@@ -1,8 +1,11 @@
-import { NavLink } from "react-router-dom";
+import { NavLink, useNavigate } from "react-router-dom";
+import { LogOut } from "lucide-react";
 
 import { Logo } from "@/components/branding/Logo";
-import { ROLE_LABELS } from "@/constants";
+import { Button } from "@/components/ui/button";
+import { useAuth } from "@/hooks/useAuth";
 import type { Role } from "@/types";
+import { getInitials } from "@/utils/format";
 import { cn } from "@/lib/utils";
 import { NAV_BY_ROLE } from "./navConfig";
 
@@ -42,6 +45,15 @@ export function SidebarNav({ role, onNavigate, className }: SidebarProps) {
 }
 
 export function Sidebar({ role, onNavigate, className }: SidebarProps) {
+  const { user, logout } = useAuth();
+  const navigate = useNavigate();
+
+  async function handleSignOut() {
+    onNavigate?.();
+    await logout();
+    navigate("/login", { replace: true });
+  }
+
   return (
     <aside
       className={cn(
@@ -54,16 +66,28 @@ export function Sidebar({ role, onNavigate, className }: SidebarProps) {
       </div>
 
       <div className="flex-1 overflow-y-auto px-3 py-4">
-        <p className="text-muted-foreground mb-2 px-3 text-[11px] font-semibold tracking-wider uppercase">
-          {ROLE_LABELS[role]} workspace
-        </p>
         <SidebarNav role={role} onNavigate={onNavigate} />
       </div>
 
-      <div className="border-sidebar-border border-t px-5 py-4">
-        <p className="text-muted-foreground text-[11px] leading-relaxed">
-          Demo environment — data is stored in this browser only.
-        </p>
+      <div className="border-sidebar-border border-t px-3 py-3">
+        {user && (
+          <div className="mb-2 flex items-center gap-2 px-1">
+            <span className="bg-secondary text-secondary-foreground flex size-8 shrink-0 items-center justify-center rounded-full text-xs font-semibold">
+              {getInitials(user.fullName)}
+            </span>
+            <span className="min-w-0 flex-1 truncate text-xs font-medium">
+              {user.fullName}
+            </span>
+          </div>
+        )}
+        <Button
+          variant="ghost"
+          className="text-muted-foreground hover:text-foreground w-full justify-start gap-2"
+          onClick={() => void handleSignOut()}
+        >
+          <LogOut className="size-4" />
+          Sign out
+        </Button>
       </div>
     </aside>
   );
