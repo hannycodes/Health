@@ -1,4 +1,4 @@
-import type { RouteObject } from "react-router-dom";
+import { Navigate, type RouteObject } from "react-router-dom";
 
 import { AuthLayout } from "@/layouts/AuthLayout";
 import { DoctorLayout } from "@/layouts/DoctorLayout";
@@ -7,6 +7,23 @@ import { PatientLayout } from "@/layouts/PatientLayout";
 import { SuperAdminLayout } from "@/layouts/SuperAdminLayout";
 import { LandingPage } from "@/pages/LandingPage";
 import { LoginPage } from "@/pages/auth/LoginPage";
+import { CreateDepartmentPage } from "@/pages/hospital-admin/CreateDepartmentPage";
+import { DepartmentDetailsPage } from "@/pages/hospital-admin/DepartmentDetailsPage";
+import { DoctorDetailsPage } from "@/pages/hospital-admin/DoctorDetailsPage";
+import { HospitalAnalyticsPage } from "@/pages/hospital-admin/HospitalAnalyticsPage";
+import { HospitalAppointmentDetailsPage } from "@/pages/hospital-admin/HospitalAppointmentDetailsPage";
+import { HospitalAppointmentsPage } from "@/pages/hospital-admin/HospitalAppointmentsPage";
+import { HospitalCalendarPage } from "@/pages/hospital-admin/HospitalCalendarPage";
+import { HospitalDashboard } from "@/pages/hospital-admin/HospitalDashboard";
+import { HospitalDepartmentsPage } from "@/pages/hospital-admin/HospitalDepartmentsPage";
+import { HospitalDoctorsPage } from "@/pages/hospital-admin/HospitalDoctorsPage";
+import { HospitalNotificationsPage } from "@/pages/hospital-admin/HospitalNotificationsPage";
+import { HospitalPatientDetailsPage } from "@/pages/hospital-admin/HospitalPatientDetailsPage";
+import { HospitalPatientsPage } from "@/pages/hospital-admin/HospitalPatientsPage";
+import { HospitalPaymentsPage } from "@/pages/hospital-admin/HospitalPaymentsPage";
+import { HospitalProfilePage } from "@/pages/hospital-admin/HospitalProfilePage";
+import { HospitalSettingsPage } from "@/pages/hospital-admin/HospitalSettingsPage";
+import { RegisterDoctorPage } from "@/pages/hospital-admin/RegisterDoctorPage";
 import { PatientAiNavigator } from "@/pages/patient/PatientAiNavigator";
 import { PatientAppointments } from "@/pages/patient/PatientAppointments";
 import { PatientDashboard } from "@/pages/patient/PatientDashboard";
@@ -124,73 +141,25 @@ export const appRoutes: RouteObject[] = [
         path: "/hospital-admin",
         element: <HospitalAdminLayout />,
         children: [
-          {
-            index: true,
-            element: (
-              <ScaffoldPage
-                title="Hospital dashboard"
-                description="Appointments, doctor roster and bed capacity at a glance."
-                breadcrumbs={[{ label: "Hospital admin" }]}
-                owner="Hospital admin owner"
-              />
-            ),
-          },
-          {
-            path: "doctors",
-            element: (
-              <ScaffoldPage
-                title="Doctors"
-                description="Doctors practising at your hospital."
-                breadcrumbs={[
-                  { label: "Hospital admin", to: "/hospital-admin" },
-                  { label: "Doctors" },
-                ]}
-                owner="Hospital admin owner"
-              />
-            ),
-          },
-          {
-            path: "appointments",
-            element: (
-              <ScaffoldPage
-                title="Appointments"
-                description="Every appointment booked at your hospital."
-                breadcrumbs={[
-                  { label: "Hospital admin", to: "/hospital-admin" },
-                  { label: "Appointments" },
-                ]}
-                owner="Hospital admin owner"
-              />
-            ),
-          },
-          {
-            path: "profile",
-            element: (
-              <ScaffoldPage
-                title="Hospital profile"
-                description="Contact details, description and listed specialties."
-                breadcrumbs={[
-                  { label: "Hospital admin", to: "/hospital-admin" },
-                  { label: "Hospital profile" },
-                ]}
-                owner="Hospital admin owner"
-              />
-            ),
-          },
-          {
-            path: "capacity",
-            element: (
-              <ScaffoldPage
-                title="Capacity"
-                description="Bed availability and occupancy for the hospital."
-                breadcrumbs={[
-                  { label: "Hospital admin", to: "/hospital-admin" },
-                  { label: "Capacity" },
-                ]}
-                owner="Hospital admin owner"
-              />
-            ),
-          },
+          { index: true, element: <HospitalDashboard /> },
+          { path: "dashboard", element: <Navigate to="/hospital-admin" replace /> },
+          { path: "profile", element: <HospitalProfilePage /> },
+          { path: "departments", element: <HospitalDepartmentsPage /> },
+          { path: "departments/new", element: <CreateDepartmentPage /> },
+          { path: "departments/:id", element: <DepartmentDetailsPage /> },
+          { path: "doctors", element: <HospitalDoctorsPage /> },
+          { path: "doctors/new", element: <RegisterDoctorPage /> },
+          { path: "doctors/:id", element: <DoctorDetailsPage /> },
+          { path: "appointments", element: <HospitalAppointmentsPage /> },
+          { path: "appointments/:id", element: <HospitalAppointmentDetailsPage /> },
+          { path: "patients", element: <HospitalPatientsPage /> },
+          { path: "patients/:id", element: <HospitalPatientDetailsPage /> },
+          { path: "calendar", element: <HospitalCalendarPage /> },
+          { path: "analytics", element: <HospitalAnalyticsPage /> },
+          { path: "payments", element: <HospitalPaymentsPage /> },
+          { path: "notifications", element: <HospitalNotificationsPage /> },
+          { path: "settings", element: <HospitalSettingsPage /> },
+          { path: "capacity", element: <Navigate to="/hospital-admin/profile" replace /> },
         ],
       },
     ],

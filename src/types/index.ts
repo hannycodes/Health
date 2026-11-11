@@ -44,6 +44,23 @@ export type Specialty = (typeof SPECIALTIES)[number];
 
 export type HospitalApprovalStatus = "PENDING" | "APPROVED" | "REJECTED";
 
+export const DEPARTMENT_STATUSES = ["ACTIVE", "INACTIVE"] as const;
+export type DepartmentStatus = (typeof DEPARTMENT_STATUSES)[number];
+
+/** Account lifecycle for a doctor profile registered by a hospital admin. */
+export type DoctorAccountStatus = "ACTIVE" | "PENDING_INVITATION";
+
+/** Services a hospital may publish once it has actually configured them. */
+export const HOSPITAL_SERVICES = [
+  "EMERGENCY",
+  "OUTPATIENT",
+  "INPATIENT",
+  "LABORATORY",
+  "IMAGING",
+  "PHARMACY",
+] as const;
+export type HospitalServiceOffering = (typeof HOSPITAL_SERVICES)[number];
+
 export type UrgencyLevel = "LOW" | "MODERATE" | "HIGH" | "EMERGENCY";
 
 export type NotificationType =
@@ -80,6 +97,8 @@ export interface Patient extends User {
 export interface Doctor extends User {
   role: "DOCTOR";
   hospitalId: string;
+  /** Department inside the doctor's hospital. Optional until one is assigned. */
+  departmentId?: string;
   specialty: Specialty;
   licenseNumber: string;
   yearsExperience: number;
@@ -87,6 +106,10 @@ export interface Doctor extends User {
   consultationFee: number;
   rating: number;
   isAcceptingPatients: boolean;
+  /** Hospital-side lifecycle. A missing value means the doctor is active. */
+  isActive?: boolean;
+  /** Account lifecycle. A missing value means the account is already active. */
+  accountStatus?: DoctorAccountStatus;
 }
 
 export interface HospitalAdmin extends User {
@@ -119,11 +142,61 @@ export interface Hospital {
   email: string;
   description: string;
   specialties: Specialty[];
+  /** Only services the hospital has configured appear here. */
+  services?: HospitalServiceOffering[];
   rating: number;
   isVerified: boolean;
   approvalStatus: HospitalApprovalStatus;
   capacity: HospitalCapacity;
+  operatingHours?: HospitalOperatingHours;
   createdAt: string;
+}
+
+export interface HospitalOperatingHours {
+  /** 24h clock, e.g. "08:00". */
+  opensAt: string;
+  /** 24h clock, e.g. "20:00". */
+  closesAt: string;
+  workingDays: Weekday[];
+  emergencyAvailable: boolean;
+}
+
+/** A clinical department inside one hospital. */
+export interface Department {
+  id: string;
+  hospitalId: string;
+  name: string;
+  description: string;
+  specialty: Specialty;
+  contactPhone?: string;
+  contactEmail?: string;
+  location?: string;
+  status: DepartmentStatus;
+  createdAt: string;
+}
+
+export interface CreateDepartmentInput {
+  hospitalId: string;
+  name: string;
+  description: string;
+  specialty: Specialty;
+  contactPhone?: string;
+  contactEmail?: string;
+  location?: string;
+}
+
+export interface CreateDoctorInput {
+  fullName: string;
+  email: string;
+  phone?: string;
+  /** Resolved from the signed-in administrator's hospital, never from user input. */
+  hospitalId: string;
+  departmentId?: string;
+  specialty: Specialty;
+  licenseNumber: string;
+  yearsExperience: number;
+  consultationFee: number;
+  bio: string;
 }
 
 /* -------------------------------------------------------------------------- */

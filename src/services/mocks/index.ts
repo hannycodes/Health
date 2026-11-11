@@ -7,6 +7,7 @@ import {
   MockNotificationService,
   MockPatientService,
 } from "./directoryServices";
+import { MockDepartmentService } from "./departmentService";
 import {
   MockAINavigatorService,
   MockMedicalRecordService,
@@ -23,6 +24,7 @@ export const mockServices: ServiceContainer = {
   auth: new MockAuthService(),
   patients: new MockPatientService(),
   doctors: new MockDoctorService(),
+  departments: new MockDepartmentService(),
   hospitals: new MockHospitalService(),
   appointments: new MockAppointmentService(),
   medicalRecords: new MockMedicalRecordService(),

@@ -14,6 +14,7 @@ export const services: ServiceContainer =
 
 export const appointmentService = services.appointments;
 export const authService = services.auth;
+export const departmentService = services.departments;
 export const doctorService = services.doctors;
 export const hospitalService = services.hospitals;
 export const medicalRecordService = services.medicalRecords;

@@ -1,5 +1,6 @@
 import { ApiError } from "@/lib/http";
 import type {
+  CreateDoctorInput,
   Doctor,
   DoctorAvailability,
   Hospital,
@@ -82,7 +83,9 @@ export class MockDoctorService implements DoctorService {
           }
           if (
             search &&
-            !`${doctor.fullName} ${doctor.specialty}`.toLowerCase().includes(search)
+            !`${doctor.fullName} ${doctor.specialty} ${doctor.email}`
+              .toLowerCase()
+              .includes(search)
           ) {
             return false;
           }
@@ -106,6 +109,82 @@ export class MockDoctorService implements DoctorService {
     });
   }
 
+  create(input: CreateDoctorInput): Promise<Doctor> {
+    return respond(() => {
+      let created: Doctor | undefined;
+
+      demoDb.mutate((db) => {
+        const hospital = db.hospitals.find((item) => item.id === input.hospitalId);
+        if (!hospital) {
+          throw new ApiError({ status: 404, message: "Hospital not found." });
+        }
+
+        const email = input.email.trim().toLowerCase();
+        const emailTaken = [...db.doctors, ...db.patients, ...db.hospitalAdmins].some(
+          (user) => user.email.toLowerCase() === email,
+        );
+        if (emailTaken) {
+          throw new ApiError({
+            status: 409,
+            message: "A MyHealth account already uses that email address.",
+          });
+        }
+
+        if (input.departmentId) {
+          const department = db.departments.find((item) => item.id === input.departmentId);
+          if (!department) {
+            throw new ApiError({ status: 404, message: "Department not found." });
+          }
+          // A department belongs to exactly one hospital; never cross the boundary.
+          if (department.hospitalId !== input.hospitalId) {
+            throw new ApiError({
+              status: 403,
+              message: "That department belongs to another hospital.",
+            });
+          }
+        }
+
+        const doctor: Doctor = {
+          id: createId("doc"),
+          email: input.email.trim(),
+          fullName: input.fullName.trim(),
+          role: "DOCTOR",
+          phone: input.phone?.trim() || undefined,
+          hospitalId: input.hospitalId,
+          departmentId: input.departmentId,
+          specialty: input.specialty,
+          licenseNumber: input.licenseNumber.trim(),
+          yearsExperience: input.yearsExperience,
+          bio: input.bio.trim(),
+          consultationFee: input.consultationFee,
+          rating: 0,
+          isAcceptingPatients: true,
+          isActive: true,
+          // The account is only usable once the doctor accepts the invitation.
+          accountStatus: "PENDING_INVITATION",
+          createdAt: new Date().toISOString(),
+        };
+
+        db.doctors = [doctor, ...db.doctors];
+        created = { ...doctor };
+
+        db.hospitalAdmins
+          .filter((admin) => admin.hospitalId === input.hospitalId)
+          .forEach((admin) => {
+            pushNotification(db, {
+              userId: admin.id,
+              title: "Doctor registered",
+              message: `${doctor.fullName} was registered for ${hospital.name}. An invitation is pending.`,
+              type: "SYSTEM",
+              link: `/hospital-admin/doctors/${doctor.id}`,
+            });
+          });
+      });
+
+      return created as Doctor;
+    });
+  }
+
   update(id: string, patch: Partial<Doctor>): Promise<Doctor> {
     return respond(() => {
       let updated: Doctor | undefined;
@@ -115,6 +194,23 @@ export class MockDoctorService implements DoctorService {
           throw new ApiError({ status: 404, message: "Doctor not found." });
         }
         Object.assign(doctor, patch);
+        updated = { ...doctor };
+      });
+      return updated as Doctor;
+    });
+  }
+
+  setActive(id: string, active: boolean): Promise<Doctor> {
+    return respond(() => {
+      let updated: Doctor | undefined;
+      demoDb.mutate((db) => {
+        const doctor = db.doctors.find((item) => item.id === id);
+        if (!doctor) {
+          throw new ApiError({ status: 404, message: "Doctor not found." });
+        }
+        doctor.isActive = active;
+        // A deactivated doctor cannot keep accepting new patients.
+        if (!active) doctor.isAcceptingPatients = false;
         updated = { ...doctor };
       });
       return updated as Doctor;

@@ -1,6 +1,7 @@
 import type {
   AIRecommendation,
   Appointment,
+  Department,
   Doctor,
   DoctorAvailability,
   Hospital,
@@ -26,6 +27,7 @@ export interface DemoDatabase {
   hospitalAdmins: HospitalAdmin[];
   superAdmins: SuperAdmin[];
   hospitals: Hospital[];
+  departments: Department[];
   appointments: Appointment[];
   medicalRecords: MedicalRecord[];
   payments: Payment[];

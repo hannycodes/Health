@@ -1,16 +1,19 @@
 import {
+  BarChart3,
+  Bell,
   Building2,
   CalendarDays,
   CalendarRange,
-  ClipboardList,
   FileHeart,
   LayoutDashboard,
+  Settings,
   ShieldCheck,
   Sparkles,
   Stethoscope,
   UserRound,
   Users,
   UsersRound,
+  Wallet,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
@@ -48,10 +51,16 @@ export const NAV_BY_ROLE: Record<Role, NavItem[]> = {
   ],
   HOSPITAL_ADMIN: [
     { label: "Dashboard", to: "/hospital-admin", icon: LayoutDashboard, end: true },
-    { label: "Doctors", to: "/hospital-admin/doctors", icon: Stethoscope },
     { label: "Appointments", to: "/hospital-admin/appointments", icon: CalendarDays },
+    { label: "Calendar", to: "/hospital-admin/calendar", icon: CalendarRange },
+    { label: "Doctors", to: "/hospital-admin/doctors", icon: Stethoscope },
+    { label: "Departments", to: "/hospital-admin/departments", icon: Building2 },
+    { label: "Patients", to: "/hospital-admin/patients", icon: UsersRound },
+    { label: "Analytics", to: "/hospital-admin/analytics", icon: BarChart3 },
+    { label: "Payments", to: "/hospital-admin/payments", icon: Wallet },
+    { label: "Notifications", to: "/hospital-admin/notifications", icon: Bell },
     { label: "Hospital Profile", to: "/hospital-admin/profile", icon: Building2 },
-    { label: "Capacity", to: "/hospital-admin/capacity", icon: ClipboardList },
+    { label: "Settings", to: "/hospital-admin/settings", icon: Settings },
   ],
   SUPER_ADMIN: [
     { label: "Dashboard", to: "/super-admin", icon: LayoutDashboard, end: true },
