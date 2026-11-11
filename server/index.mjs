@@ -24,7 +24,9 @@ const AI_BASE = (
   process.env.OPENAI_BASE_URL ||
   "https://api.z.ai/api/paas/v4"
 ).replace(/\/$/, "");
-const AI_MODEL = process.env.ZAI_MODEL || process.env.OPENAI_MODEL || "glm-4v-flash";
+// GLM-4.6V-Flash is Z.ai's free vision model; it reads symptom photos and
+// answers in English or Amharic.
+const AI_MODEL = process.env.ZAI_MODEL || process.env.OPENAI_MODEL || "glm-4.6v-flash";
 
 const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
 const IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp"];
