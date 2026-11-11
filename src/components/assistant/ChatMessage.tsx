@@ -135,7 +135,7 @@ export function ChatMessage({ message, onFollowUp, followUpsDisabled }: ChatMess
           <span>{formatClock(message.createdAt)}</span>
           {message.isMock && (
             <Badge variant="outline" className="h-4 px-1.5 text-[10px]">
-              Mock demo response
+              Offline sample — not AI
             </Badge>
           )}
         </div>

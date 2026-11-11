@@ -131,7 +131,11 @@ export function PatientDoctors() {
               doctor={doctor}
               hospitalName={hospitalName(doctor.hospitalId)}
               action={
-                <Button size="sm" className="w-full" asChild>
+                <Button
+                  size="sm"
+                  className="w-full bg-emerald-600 hover:bg-emerald-700"
+                  asChild
+                >
                   <Link to={`/patient/doctors/${doctor.id}`}>View profile</Link>
                 </Button>
               }

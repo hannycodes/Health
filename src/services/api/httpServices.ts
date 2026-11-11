@@ -351,10 +351,14 @@ class HttpAIHealthService implements AIHealthService {
   }
 
   async uploadImage(file: File): Promise<UploadedImage> {
-    const form = new FormData();
-    form.append("image", file);
-    const { data } = await httpClient.post<UploadedImage>("/ai/images", form, {
-      headers: { "Content-Type": "multipart/form-data" },
+    // The file is read as a data URL and posted to our own backend, which
+    // owns the AI provider credential. No browser secret, no vendor CORS.
+    const dataBase64 = await readFileAsDataUrl(file);
+    const { data } = await httpClient.post<UploadedImage>("/ai/images", {
+      fileName: file.name,
+      mimeType: file.type,
+      sizeBytes: file.size,
+      dataBase64,
     });
     return data;
   }
@@ -390,6 +394,16 @@ class HttpNotificationService implements NotificationService {
     });
     return data;
   }
+}
+
+/** Read a local file as a data URL for the image upload endpoint. */
+function readFileAsDataUrl(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result));
+    reader.onerror = () => reject(new Error("Could not read the selected image."));
+    reader.readAsDataURL(file);
+  });
 }
 
 export function createHttpServices(): ServiceContainer {

@@ -1,7 +1,10 @@
-import { NavLink } from "react-router-dom";
+import { NavLink, useNavigate } from "react-router-dom";
+import { LogOut } from "lucide-react";
 
 import { BrandMark } from "@/components/common/BrandMark";
+import { Button } from "@/components/ui/button";
 import { ROLE_LABELS } from "@/constants";
+import { useAuth } from "@/hooks/useAuth";
 import type { Role } from "@/types";
 import { cn } from "@/lib/utils";
 import { NAV_BY_ROLE } from "./navConfig";
@@ -42,6 +45,14 @@ export function SidebarNav({ role, onNavigate, className }: SidebarProps) {
 }
 
 export function Sidebar({ role, onNavigate, className }: SidebarProps) {
+  const { logout } = useAuth();
+  const navigate = useNavigate();
+
+  async function handleSignOut() {
+    await logout();
+    navigate("/login", { replace: true });
+  }
+
   return (
     <aside
       className={cn(
@@ -60,10 +71,15 @@ export function Sidebar({ role, onNavigate, className }: SidebarProps) {
         <SidebarNav role={role} onNavigate={onNavigate} />
       </div>
 
-      <div className="border-sidebar-border border-t px-5 py-4">
-        <p className="text-muted-foreground text-[11px] leading-relaxed">
-          Demo environment — data is stored in this browser only.
-        </p>
+      <div className="border-sidebar-border border-t px-3 py-4">
+        <Button
+          variant="ghost"
+          className="text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground w-full justify-start gap-3 px-3"
+          onClick={() => void handleSignOut()}
+        >
+          <LogOut className="size-4" aria-hidden="true" />
+          Sign out
+        </Button>
       </div>
     </aside>
   );

@@ -98,7 +98,11 @@ export function PatientHospitals() {
               key={hospital.id}
               hospital={hospital}
               action={
-                <Button size="sm" variant="outline" asChild>
+                <Button
+                  size="sm"
+                  className="border-transparent bg-sky-600 text-white hover:bg-sky-700"
+                  asChild
+                >
                   <Link to={`/patient/hospitals/${hospital.id}`}>View details</Link>
                 </Button>
               }

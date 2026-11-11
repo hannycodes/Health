@@ -519,8 +519,8 @@ export function PatientBookAppointment() {
                 >
                   <span className="block font-medium">Pay online</span>
                   <span className="text-muted-foreground text-xs">
-                    Simulated payment in this demo. The real flow uses the shared payment
-                    service.
+                    Payment is handled securely; its status is tracked separately from the
+                    appointment.
                   </span>
                 </button>
                 <button

@@ -141,9 +141,6 @@ export function PatientMedicalRecordDetails() {
               Records are written by your care team. MyHealth does not let patients edit
               clinical records — contact the hospital if something looks wrong.
             </p>
-            <p className="text-muted-foreground">
-              This demo uses fictional data created for the hackathon.
-            </p>
             <Button variant="outline" size="sm" className="w-full" asChild>
               <Link to="/patient/medical-history">Back to medical history</Link>
             </Button>

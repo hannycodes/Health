@@ -10,7 +10,7 @@ import { demoDb } from "./mocks/store";
  * backend exists. Set `VITE_DATA_SOURCE=http` once the API contract is final.
  */
 export const services: ServiceContainer =
-  import.meta.env.VITE_DATA_SOURCE === "http" ? createHttpServices() : mockServices;
+  import.meta.env.VITE_DATA_SOURCE === "mock" ? mockServices : createHttpServices();
 
 export const appointmentService = services.appointments;
 export const authService = services.auth;

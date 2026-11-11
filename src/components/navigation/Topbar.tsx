@@ -2,7 +2,6 @@ import { Menu } from "lucide-react";
 
 import { BrandMark } from "@/components/common/BrandMark";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/hooks/useAuth";
 import { NotificationsMenu } from "./NotificationsMenu";
 import { UserMenu } from "./UserMenu";
@@ -32,9 +31,6 @@ export function Topbar({ onOpenMobileNav }: TopbarProps) {
       </div>
 
       <div className="flex items-center gap-1 sm:gap-2">
-        <Badge variant="outline" className="hidden sm:inline-flex">
-          Demo mode
-        </Badge>
         {user && <NotificationsMenu userId={user.id} />}
         <UserMenu />
       </div>

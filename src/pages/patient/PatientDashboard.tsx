@@ -1,7 +1,6 @@
 import { Link } from "react-router-dom";
 import {
   ArrowRight,
-  Bell,
   Building2,
   CalendarClock,
   CalendarPlus,
@@ -20,7 +19,6 @@ import { Button } from "@/components/ui/button";
 import {
   Card,
   CardContent,
-  CardDescription,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
@@ -92,7 +90,6 @@ export function PatientDashboard() {
     .sort((a, b) => `${a.date}${a.startTime}`.localeCompare(`${b.date}${b.startTime}`));
   const nextAppointment = upcoming[0];
   const notifications = notificationsQuery.data ?? [];
-  const unreadCount = notifications.filter((item) => !item.isRead).length;
 
   const hospitalName = (hospitalId: string) =>
     hospitalsQuery.data?.find((hospital) => hospital.id === hospitalId)?.name;
@@ -120,10 +117,10 @@ export function PatientDashboard() {
         }
       />
 
-      <div className="grid gap-4 md:grid-cols-3">
+      <div className="grid gap-4">
         <Link
           to="/patient/assistant"
-          className="from-primary to-emerald-700 hover:to-emerald-800 md:col-span-2 group relative overflow-hidden rounded-xl bg-gradient-to-br p-5 text-white shadow-sm transition-colors"
+          className="from-primary to-emerald-700 hover:to-emerald-800 group relative overflow-hidden rounded-xl bg-gradient-to-br p-5 text-white shadow-sm transition-colors"
         >
           <div className="relative z-10 space-y-2">
             <span className="inline-flex items-center gap-1.5 rounded-full bg-white/15 px-2.5 py-0.5 text-[11px] font-medium">
@@ -146,22 +143,6 @@ export function PatientDashboard() {
           />
         </Link>
 
-        <Card className="gap-2 py-4">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-base">
-              <Bell className="size-4 text-primary" aria-hidden="true" />
-              Notifications
-            </CardTitle>
-            <CardDescription>
-              {unreadCount > 0 ? `${unreadCount} unread` : "You are all caught up"}
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Button variant="outline" size="sm" className="w-full" asChild>
-              <Link to="/patient/notifications">Open notifications</Link>
-            </Button>
-          </CardContent>
-        </Card>
       </div>
 
       <HealthSummaryCard patient={patientQuery.data} />
@@ -279,7 +260,11 @@ export function PatientDashboard() {
                 doctor={doctor}
                 hospitalName={hospitalName(doctor.hospitalId)}
                 action={
-                  <Button size="sm" variant="outline" className="w-full" asChild>
+                  <Button
+                    size="sm"
+                    className="w-full bg-emerald-600 hover:bg-emerald-700"
+                    asChild
+                  >
                     <Link to={`/patient/doctors/${doctor.id}`}>View profile</Link>
                   </Button>
                 }

@@ -54,7 +54,7 @@ export function LoginPage() {
     }
   }
 
-  function fillDemoAccount(email: string, password: string) {
+  function fillAccount(email: string, password: string) {
     form.setValue("email", email, { shouldValidate: true });
     form.setValue("password", password, { shouldValidate: true });
     setFormError(null);
@@ -65,7 +65,7 @@ export function LoginPage() {
       <CardHeader>
         <CardTitle className="text-xl">Sign in to MyHealth</CardTitle>
         <CardDescription>
-          Use one of the demo accounts below to explore a role.
+          Sign in with your MyHealth account to continue.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-5">
@@ -118,20 +118,20 @@ export function LoginPage() {
 
         <div className="space-y-2">
           <p className="text-muted-foreground text-xs font-medium tracking-wide uppercase">
-            Demo accounts
+            Quick sign-in
           </p>
           <div className="grid gap-2">
             {DEMO_ACCOUNTS.map((account) => (
               <button
                 key={account.email}
                 type="button"
-                onClick={() => fillDemoAccount(account.email, account.password)}
+                onClick={() => fillAccount(account.email, account.password)}
                 className="hover:bg-accent flex items-center justify-between gap-2 rounded-lg border px-3 py-2 text-left transition-colors"
               >
                 <span className="min-w-0">
                   <span className="block text-xs font-medium">{account.description}</span>
                   <span className="text-muted-foreground block truncate text-[11px]">
-                    {account.email} · {account.password}
+                    {account.email}
                   </span>
                 </span>
                 <Badge variant="secondary">{ROLE_LABELS[account.role]}</Badge>

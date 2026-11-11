@@ -18,7 +18,7 @@ export function UnauthorizedPage() {
         <h1 className="text-xl font-semibold">Access restricted</h1>
         <p className="text-muted-foreground max-w-sm text-sm">
           Your account does not have permission to open this dashboard. Sign in with a
-          different demo role to explore it.
+          account with the right role to continue.
         </p>
       </div>
       <div className="flex gap-2">

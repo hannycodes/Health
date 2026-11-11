@@ -37,11 +37,6 @@ export function PatientMedicalHistory() {
         }
       />
 
-      <p className="text-muted-foreground text-xs">
-        Demonstration data: all records are fictional and exist to show the patient
-        experience. They are not real clinical information.
-      </p>
-
       {records.isLoading ? (
         <ListSkeleton rows={3} />
       ) : records.error ? (

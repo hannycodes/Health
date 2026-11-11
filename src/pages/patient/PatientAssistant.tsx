@@ -77,6 +77,7 @@ export function PatientAssistant() {
   const [error, setError] = useState<string | null>(null);
   const [status, setStatus] = useState<string | null>(null);
   const [isSending, setIsSending] = useState(false);
+  const [language, setLanguage] = useState<"en" | "am">("en");
 
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -185,6 +186,7 @@ export function PatientAssistant() {
         message,
         patientContext,
         imageIds,
+        language,
       });
 
       if (!conversationId) setConversationId(response.conversationId);
@@ -216,7 +218,7 @@ export function PatientAssistant() {
           <div className="flex items-center gap-2">
             <Badge variant="outline" className="gap-1.5">
               <span className="size-1.5 rounded-full bg-emerald-500" aria-hidden="true" />
-              Demo assistant · rule-based
+              Medical AI · English & አማርኛ
             </Badge>
             <Button variant="outline" onClick={startNewConversation}>
               <Plus className="size-4" aria-hidden="true" />
@@ -230,9 +232,9 @@ export function PatientAssistant() {
         <CardContent className="flex items-start gap-2 text-xs text-amber-900">
           <AlertTriangle className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
           <p>
-            This demo answers with local keyword rules, not a medical AI model. It cannot
-            diagnose, prescribe or rule out an emergency. For severe chest pain, trouble
-            breathing or signs of stroke, call your local emergency number now.
+            The medical assistant gives general health information and care navigation. It
+            does not diagnose or prescribe. For severe chest pain, trouble breathing or
+            signs of stroke, call your local emergency number now.
           </p>
         </CardContent>
       </Card>
@@ -421,6 +423,8 @@ export function PatientAssistant() {
             <ChatComposer
               value={draft}
               onChange={setDraft}
+              language={language}
+              onLanguageChange={setLanguage}
               attachments={attachments}
               onFilesSelected={handleFilesSelected}
               onRemoveAttachment={removeAttachment}

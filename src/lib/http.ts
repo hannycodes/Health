@@ -19,7 +19,7 @@ export class ApiError extends Error implements ApiErrorShape {
   }
 }
 
-const baseURL = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8000/api";
+const baseURL = import.meta.env.VITE_API_BASE_URL ?? "/api";
 
 /**
  * Shared Axios instance.

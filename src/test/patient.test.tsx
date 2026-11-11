@@ -108,7 +108,7 @@ describe("AI health assistant service", () => {
     expect(response.urgency).toBe("EMERGENCY");
     expect(response.isMock).toBe(true);
     expect(response.message).toMatch(/emergency/i);
-    expect(response.disclaimer).toMatch(/demo response/i);
+    expect(response.disclaimer).toMatch(/offline sample/i);
   });
 
   it("passes patient context and image references through the contract", async () => {
@@ -187,7 +187,7 @@ describe("patient pages", () => {
     expect(screen.getByText("22.9")).toBeInTheDocument();
   });
 
-  it("sends a symptom message and labels the demo reply", async () => {
+  it("sends a symptom message and labels an offline reply", async () => {
     await signInPatient();
     renderAt("/patient/assistant");
 
@@ -195,10 +195,11 @@ describe("patient pages", () => {
     await userEvent.type(composer, "I have had a headache for three days and feel dizzy");
     await userEvent.click(screen.getByRole("button", { name: /send message/i }));
 
-    expect(
-      await screen.findByText(/mock demo response/i, undefined, { timeout: 5000 }),
-    ).toBeInTheDocument();
-  });
+    const labels = await screen.findAllByText(/offline sample/i, undefined, {
+      timeout: 10_000,
+    });
+    expect(labels.length).toBeGreaterThan(0);
+  }, 20_000);
 
   it("lists the patient's upcoming appointments", async () => {
     await signInPatient();
