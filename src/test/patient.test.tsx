@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { act, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { RouterProvider, createMemoryRouter } from "react-router-dom";
@@ -249,6 +249,45 @@ describe("patient pages", () => {
 
     delete (window as unknown as { SpeechRecognition?: unknown }).SpeechRecognition;
   });
+
+  it("offers read-aloud on an assistant reply", async () => {
+    const speak = vi.fn();
+    Object.defineProperty(window, "speechSynthesis", {
+      configurable: true,
+      value: { speak, cancel: vi.fn(), getVoices: () => [] },
+    });
+    Object.defineProperty(window, "SpeechSynthesisUtterance", {
+      configurable: true,
+      value: class {
+        text: string;
+        lang = "";
+        voice: unknown = null;
+        onend: (() => void) | null = null;
+        onerror: (() => void) | null = null;
+        constructor(text: string) {
+          this.text = text;
+        }
+      },
+    });
+
+    await signInPatient();
+    renderAt("/patient/assistant");
+
+    const composer = await screen.findByLabelText(
+      /message the ai health assistant/i,
+    );
+    await userEvent.type(composer, "I have had a headache for three days");
+    await userEvent.click(screen.getByRole("button", { name: /send message/i }));
+
+    const listen = await screen.findByRole(
+      "button",
+      { name: /read the reply aloud/i },
+      { timeout: 10_000 },
+    );
+    await userEvent.click(listen);
+
+    expect(speak).toHaveBeenCalledTimes(1);
+  }, 20_000);
 
   it("lists the patient's upcoming appointments", async () => {
     await signInPatient();
