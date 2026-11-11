@@ -5,6 +5,7 @@ import { DoctorLayout } from "@/layouts/DoctorLayout";
 import { HospitalAdminLayout } from "@/layouts/HospitalAdminLayout";
 import { PatientLayout } from "@/layouts/PatientLayout";
 import { SuperAdminLayout } from "@/layouts/SuperAdminLayout";
+import { LandingPage } from "@/pages/LandingPage";
 import { LoginPage } from "@/pages/auth/LoginPage";
 import { PatientAiNavigator } from "@/pages/patient/PatientAiNavigator";
 import { PatientAppointments } from "@/pages/patient/PatientAppointments";
@@ -17,7 +18,6 @@ import { NotFoundPage } from "@/pages/shared/NotFoundPage";
 import { ScaffoldPage } from "@/pages/shared/ScaffoldPage";
 import { UnauthorizedPage } from "@/pages/shared/UnauthorizedPage";
 import { ProtectedRoute } from "./ProtectedRoute";
-import { RootRedirect } from "./RootRedirect";
 
 /**
  * Application route tree.
@@ -27,7 +27,7 @@ import { RootRedirect } from "./RootRedirect";
  * in a real page without touching this file's structure.
  */
 export const appRoutes: RouteObject[] = [
-  { path: "/", element: <RootRedirect /> },
+  { path: "/", element: <LandingPage /> },
   {
     path: "/login",
     element: <AuthLayout />,

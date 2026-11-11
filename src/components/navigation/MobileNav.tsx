@@ -4,7 +4,7 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
-import { BrandMark } from "@/components/common/BrandMark";
+import { Logo } from "@/components/branding/Logo";
 import type { Role } from "@/types";
 import { SidebarNav } from "./Sidebar";
 
@@ -20,7 +20,7 @@ export function MobileNav({ role, open, onOpenChange }: MobileNavProps) {
       <SheetContent side="left" className="bg-sidebar w-72">
         <SheetHeader className="border-b pb-4">
           <SheetTitle className="text-left">
-            <BrandMark />
+            <Logo size="sm" to={null} />
           </SheetTitle>
         </SheetHeader>
         <div className="px-3">

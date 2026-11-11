@@ -80,6 +80,9 @@ frontend environment — anything prefixed `VITE_` is public in the bundle.
 ```
 src/
   components/
+    branding/      Logo component (official logo asset)
+    images/        logo.png (official brand asset)
+    landing/       Public landing page navbar, footer and sections
     ui/            shadcn/ui primitives (design system layer)
     common/        PageHeader, EmptyState, ErrorState, StatusBadge, StatCard, ...
     navigation/    Sidebar, Topbar, UserMenu, NotificationsMenu, MobileNav, navConfig

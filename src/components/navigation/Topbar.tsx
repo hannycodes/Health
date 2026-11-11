@@ -1,6 +1,6 @@
 import { Menu } from "lucide-react";
 
-import { BrandMark } from "@/components/common/BrandMark";
+import { Logo } from "@/components/branding/Logo";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/hooks/useAuth";
@@ -27,7 +27,7 @@ export function Topbar({ onOpenMobileNav }: TopbarProps) {
           <Menu className="size-5" />
         </Button>
         <div className="lg:hidden">
-          <BrandMark compact />
+          <Logo size="xs" to={null} />
         </div>
       </div>
 

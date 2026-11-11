@@ -1,6 +1,6 @@
 import { NavLink } from "react-router-dom";
 
-import { BrandMark } from "@/components/common/BrandMark";
+import { Logo } from "@/components/branding/Logo";
 import { ROLE_LABELS } from "@/constants";
 import type { Role } from "@/types";
 import { cn } from "@/lib/utils";
@@ -50,7 +50,7 @@ export function Sidebar({ role, onNavigate, className }: SidebarProps) {
       )}
     >
       <div className="border-sidebar-border flex h-16 items-center border-b px-5">
-        <BrandMark />
+        <Logo size="sm" />
       </div>
 
       <div className="flex-1 overflow-y-auto px-3 py-4">
