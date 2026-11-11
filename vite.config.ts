@@ -17,6 +17,14 @@ export default defineConfig({
   },
   server: {
     port: 5173,
+    // The clinical AI gateway (`npm run dev:ai`) keeps the provider key
+    // server-side and is proxied so the browser only talks to its own origin.
+    proxy: {
+      "/api": {
+        target: "http://127.0.0.1:8787",
+        changeOrigin: false,
+      },
+    },
   },
   test: {
     globals: true,

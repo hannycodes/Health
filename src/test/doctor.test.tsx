@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { RouterProvider, createMemoryRouter } from "react-router-dom";
@@ -13,6 +13,12 @@ import {
   classifyFile,
   clinicalAssistantService,
 } from "@/features/doctor/services/clinicalAssistantService";
+import {
+  fetchAiStatus,
+  requestClinicalAi,
+  resetAiStatus,
+  transcribeAudio,
+} from "@/features/doctor/services/aiGateway";
 import { appRoutes } from "@/routes/AppRoutes";
 import { demoDb, services } from "@/services";
 
@@ -197,5 +203,127 @@ describe("AI clinical assistant", () => {
 
     expect(validation.ok).toBe(false);
     if (!validation.ok) expect(validation.error).toMatch(/dicom/i);
+  });
+});
+
+/* -------------------------------------------------------------------------- */
+/*                          Live AI gateway client                            */
+/* -------------------------------------------------------------------------- */
+
+function jsonResponse(body: unknown, status = 200) {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { "Content-Type": "application/json" },
+  });
+}
+
+const UNCONFIGURED = {
+  configured: false,
+  provider: "unreachable",
+  chatModel: null,
+  transcribeModel: null,
+  languages: ["en"],
+  maxAudioBytes: 25 * 1024 * 1024,
+  missingEnv: ["AI_API_KEY"],
+};
+
+const CONFIGURED = {
+  configured: true,
+  provider: "openai-compatible",
+  chatModel: "gpt-4.1",
+  transcribeModel: "gpt-transcribe",
+  languages: ["en", "am"],
+  maxAudioBytes: 25 * 1024 * 1024,
+  missingEnv: [],
+};
+
+describe("AI gateway client", () => {
+  beforeEach(() => {
+    resetAiStatus();
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    resetAiStatus();
+  });
+
+  it("reports an unconfigured provider instead of pretending to be live", async () => {
+    vi.stubGlobal("fetch", vi.fn(async () => jsonResponse(UNCONFIGURED)));
+
+    const status = await fetchAiStatus();
+    expect(status.configured).toBe(false);
+    expect(status.chatModel).toBeNull();
+
+    const result = await requestClinicalAi({
+      task: "PATIENT_HISTORY_SUMMARY",
+      message: "Summarize the history",
+      language: "am",
+      records: [],
+      attachments: [],
+    });
+    expect(result).toBeNull();
+  });
+
+  it("passes the selected language and returns a live, review-required result", async () => {
+    const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      void init;
+      const url = String(input);
+      if (url.includes("/api/ai/status")) return jsonResponse(CONFIGURED);
+      return jsonResponse({
+        message: "ማጠቃለያ ተዘጋጅቷል።",
+        generatedSummary: "የታካሚው ታሪክ",
+        clinicalConsiderations: ["Unconfirmed consideration"],
+        redFlags: [],
+        recommendedNextSteps: ["Review in clinic"],
+        urgency: "MODERATE",
+        limitations: ["Requires clinician review"],
+        sourceRecordIds: ["rec-001"],
+        requiresDoctorReview: true,
+        isDemo: false,
+        model: "gpt-4.1",
+      });
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const result = await requestClinicalAi({
+      task: "CLINICAL_ANALYSIS",
+      message: "Analyse the documented history",
+      language: "am",
+      records: [],
+      attachments: [],
+    });
+
+    expect(result?.isDemo).toBe(false);
+    expect(result?.requiresDoctorReview).toBe(true);
+    expect(result?.urgency).toBe("MODERATE");
+
+    const requestInit = fetchMock.mock.calls[1]?.[1];
+    const sent = JSON.parse(String(requestInit?.body)) as { language: string };
+    expect(sent.language).toBe("am");
+  });
+
+  it("transcribes voice with the requested language header", async () => {
+    const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      void init;
+      const url = String(input);
+      if (url.includes("/api/ai/status")) return jsonResponse(CONFIGURED);
+      return jsonResponse({ text: "ራስ ምታት ለሶስት ቀናት", language: "am", model: "gpt-transcribe" });
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const result = await transcribeAudio(new Blob(["audio"], { type: "audio/webm" }), "am");
+    expect(result.text).toContain("ራስ ምታት");
+
+    const requestInit = fetchMock.mock.calls[1]?.[1];
+    const headers = (requestInit?.headers ?? {}) as Record<string, string>;
+    expect(headers["X-Audio-Language"]).toBe("am");
+  });
+
+  it("refuses voice transcription when the provider is not configured", async () => {
+    vi.stubGlobal("fetch", vi.fn(async () => jsonResponse(UNCONFIGURED)));
+
+    await expect(
+      transcribeAudio(new Blob(["audio"], { type: "audio/webm" }), "en"),
+    ).rejects.toThrow(/provider key|configured/i);
   });
 });

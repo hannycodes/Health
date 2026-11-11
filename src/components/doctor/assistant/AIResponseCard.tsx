@@ -27,7 +27,30 @@ export function AIResponseCard({ response, patientId, actions }: AIResponseCardP
             <Sparkles className="size-3" aria-hidden="true" />
             AI-assisted
           </Badge>
-          <Badge variant="outline">Demonstration output</Badge>
+          {response.isDemo ? (
+            <Badge variant="outline">Demonstration output</Badge>
+          ) : (
+            <Badge
+              variant="outline"
+              className="border-emerald-300 bg-emerald-50 text-emerald-800"
+            >
+              Live model{response.provider ? ` · ${response.provider}` : ""}
+            </Badge>
+          )}
+          {response.urgency && (
+            <Badge
+              variant="outline"
+              className={
+                response.urgency === "EMERGENCY" || response.urgency === "HIGH"
+                  ? "border-red-300 bg-red-50 text-red-700"
+                  : response.urgency === "MODERATE"
+                    ? "border-amber-300 bg-amber-50 text-amber-800"
+                    : "border-emerald-300 bg-emerald-50 text-emerald-800"
+              }
+            >
+              Urgency: {response.urgency}
+            </Badge>
+          )}
           {response.requiresDoctorReview && (
             <Badge variant="outline" className="border-amber-300 bg-amber-50 text-amber-800">
               Requires clinician review
@@ -56,6 +79,46 @@ export function AIResponseCard({ response, patientId, actions }: AIResponseCardP
             </p>
             <ul className="list-disc space-y-1 pl-5 text-xs">
               {response.observations.map((item) => (
+                <li key={item}>{item}</li>
+              ))}
+            </ul>
+          </div>
+        )}
+
+        {response.redFlags && response.redFlags.length > 0 && (
+          <div className="space-y-1 rounded-lg border border-red-200 bg-red-50 p-3">
+            <p className="flex items-center gap-1 text-[11px] font-semibold tracking-wide text-red-800 uppercase">
+              <AlertTriangle className="size-3" aria-hidden="true" />
+              Red flags in the documented data
+            </p>
+            <ul className="list-disc space-y-1 pl-5 text-xs text-red-900">
+              {response.redFlags.map((item) => (
+                <li key={item}>{item}</li>
+              ))}
+            </ul>
+          </div>
+        )}
+
+        {response.clinicalConsiderations && response.clinicalConsiderations.length > 0 && (
+          <div className="space-y-1">
+            <p className="text-muted-foreground text-[11px] font-semibold tracking-wide uppercase">
+              Clinical considerations — unconfirmed, for clinician evaluation
+            </p>
+            <ul className="list-disc space-y-1 pl-5 text-xs">
+              {response.clinicalConsiderations.map((item) => (
+                <li key={item}>{item}</li>
+              ))}
+            </ul>
+          </div>
+        )}
+
+        {response.recommendedNextSteps && response.recommendedNextSteps.length > 0 && (
+          <div className="space-y-1">
+            <p className="text-muted-foreground text-[11px] font-semibold tracking-wide uppercase">
+              Suggested next steps (for your consideration)
+            </p>
+            <ul className="list-disc space-y-1 pl-5 text-xs">
+              {response.recommendedNextSteps.map((item) => (
                 <li key={item}>{item}</li>
               ))}
             </ul>

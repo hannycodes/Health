@@ -24,6 +24,11 @@ import {
   type DoctorAIResponse,
   type DoctorAITask,
 } from "@/features/doctor/services/clinicalAssistantService";
+import {
+  fetchAiStatus,
+  transcribeAudio,
+  type AiLanguage,
+} from "@/features/doctor/services/aiGateway";
 import { useDoctorWorkspace } from "@/features/doctor/hooks/useDoctorWorkspace";
 import { useServiceQuery } from "@/hooks/useServiceQuery";
 import { getApiErrorMessage } from "@/lib/http";
@@ -36,6 +41,9 @@ export function DoctorAssistantPage() {
   const initialPatientId = searchParams.get("patientId") ?? undefined;
   const [patientId, setPatientId] = useState<string | undefined>(initialPatientId);
   const [task, setTask] = useState<DoctorAITask>("GENERAL_QUESTION");
+  const [language, setLanguage] = useState<AiLanguage>("en");
+  const [text, setText] = useState("");
+  const [isTranscribing, setIsTranscribing] = useState(false);
   const [conversation, setConversation] = useState<ClinicalConversation | null>(null);
   const [conversations, setConversations] = useState<ClinicalConversation[]>([]);
   const [attachments, setAttachments] = useState<ClinicalAttachment[]>([]);
@@ -52,6 +60,7 @@ export function DoctorAssistantPage() {
     () => (patientId ? services.medicalRecords.listByPatient(patientId) : Promise.resolve([])),
     patientId ?? "",
   );
+  const aiStatus = useServiceQuery(() => fetchAiStatus(), "ai-status");
 
   function refreshConversations() {
     if (doctorId) setConversations(clinicalAssistantService.listConversations(doctorId));
@@ -106,26 +115,48 @@ export function DoctorAssistantPage() {
     setAttachments((current) => current.filter((item) => item.id !== id));
   }
 
-  async function send(text: string) {
-    if (!doctorId) return;
+  async function send(message: string) {
+    const body = message.trim();
+    if (!doctorId || !body) return;
     setIsSending(true);
     setSendError(null);
 
     try {
       const result = await clinicalAssistantService.send(doctorId, {
         conversationId: conversation?.id,
-        message: text,
+        message: body,
         patientId,
         task,
+        language,
         attachmentIds: attachments.map((item) => item.id),
       });
       setConversation(result.conversation);
       setAttachments([]);
+      setText("");
       refreshConversations();
     } catch (error) {
       setSendError(getApiErrorMessage(error));
     } finally {
       setIsSending(false);
+    }
+  }
+
+  /** Voice message → text, transcribed server-side in the selected language. */
+  async function handleVoiceRecorded(audio: Blob) {
+    setIsTranscribing(true);
+    setUploadError(null);
+    try {
+      const result = await transcribeAudio(audio, language);
+      if (!result.text.trim()) {
+        setUploadError("No speech was recognised in that recording.");
+        return;
+      }
+      setText((current) => (current ? `${current}\n${result.text}` : result.text));
+      toast.success("Voice message transcribed. Review it before sending.");
+    } catch (error) {
+      setUploadError(getApiErrorMessage(error));
+    } finally {
+      setIsTranscribing(false);
     }
   }
 
@@ -212,9 +243,18 @@ export function DoctorAssistantPage() {
         breadcrumbs={[{ label: "Doctor", to: "/doctor" }, { label: "AI Assistant" }]}
         actions={
           <>
-            <Badge variant="outline" className="border-amber-300 bg-amber-50 text-amber-800">
-              Demonstration adapter — no AI provider connected
-            </Badge>
+            {aiStatus.data?.configured ? (
+              <Badge
+                variant="outline"
+                className="border-emerald-300 bg-emerald-50 text-emerald-800"
+              >
+                Live model · {aiStatus.data.chatModel ?? "connected"} · vision + voice
+              </Badge>
+            ) : (
+              <Badge variant="outline" className="border-amber-300 bg-amber-50 text-amber-800">
+                Demo adapter — set AI_API_KEY and run npm run dev:ai for live analysis
+              </Badge>
+            )}
             <Button variant="outline" onClick={startConversation}>
               <MessageSquarePlus className="size-4" />
               New conversation
@@ -275,14 +315,21 @@ export function DoctorAssistantPage() {
           )}
 
           <ClinicalMessageComposer
+            text={text}
+            onTextChange={setText}
             task={task}
             onTaskChange={setTask}
+            language={language}
+            onLanguageChange={setLanguage}
             attachments={attachments}
             onAddFiles={(files) => void handleAddFiles(files)}
             onRemoveAttachment={removeAttachment}
-            onSend={(text) => void send(text)}
+            onSend={() => void send(text)}
+            onVoiceRecorded={(audio) => void handleVoiceRecorded(audio)}
+            onVoiceError={setUploadError}
             isSending={isSending}
             isUploading={isUploading}
+            isTranscribing={isTranscribing}
             uploadError={uploadError}
             onClearUploadError={() => setUploadError(null)}
             disabled={!doctorId}

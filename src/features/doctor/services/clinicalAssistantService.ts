@@ -1,8 +1,9 @@
 import { ApiError } from "@/lib/http";
 import { services } from "@/services";
-import type { MedicalRecord, Patient } from "@/types";
+import type { Appointment, MedicalRecord, Patient } from "@/types";
 import { formatDateTime } from "@/utils/format";
 import { isAuthorizedForPatient } from "./doctorAccess";
+import { requestClinicalAi, type AiLanguage } from "./aiGateway";
 
 /**
  * Doctor Clinical Assistant — MOCK ADAPTER.
@@ -24,13 +25,19 @@ export type DoctorAITask =
   | "IMAGE_ASSISTANCE"
   | "DOCUMENT_SUMMARY"
   | "CLINICAL_NOTE_ASSISTANCE"
-  | "RESULT_COMPARISON";
+  | "RESULT_COMPARISON"
+  | "CLINICAL_ANALYSIS";
 
 export const DOCTOR_AI_TASKS: Array<{ value: DoctorAITask; label: string; hint: string }> = [
   {
     value: "GENERAL_QUESTION",
     label: "General clinical question",
     hint: "Ask about available information without a specific patient.",
+  },
+  {
+    value: "CLINICAL_ANALYSIS",
+    label: "Clinical analysis & risk review",
+    hint: "Analyse the documented history, flag red flags and suggest next steps.",
   },
   {
     value: "PATIENT_HISTORY_SUMMARY",
@@ -65,6 +72,8 @@ export interface DoctorAIRequest {
   patientId?: string;
   task: DoctorAITask;
   attachmentIds?: string[];
+  /** Output and transcription language. Defaults to English. */
+  language?: AiLanguage;
 }
 
 export interface DoctorAISourceRecord {
@@ -82,9 +91,18 @@ export interface DoctorAIResponse {
   followUpQuestions?: string[];
   limitations?: string[];
   sourceRecords?: DoctorAISourceRecord[];
+  /** Possible explanations to evaluate — always unconfirmed. */
+  clinicalConsiderations?: string[];
+  /** Documented features that would require urgent escalation. */
+  redFlags?: string[];
+  recommendedNextSteps?: string[];
+  urgency?: "LOW" | "MODERATE" | "HIGH" | "EMERGENCY";
   requiresDoctorReview: boolean;
-  /** True for this mock adapter; the shared service will return false. */
+  /** True only when no live model answered and the demo adapter was used. */
   isDemo: boolean;
+  /** Model that produced the response, when a live provider answered. */
+  provider?: string;
+  language?: AiLanguage;
 }
 
 export type ClinicalAttachmentKind = "image" | "document";
@@ -389,6 +407,45 @@ function describeAttachments(list: ClinicalAttachment[]) {
 }
 
 /* -------------------------------------------------------------------------- */
+/*                            Live model context                              */
+/* -------------------------------------------------------------------------- */
+
+interface PatientContext {
+  patient: Patient | null;
+  records: MedicalRecord[];
+  doctorNames: Record<string, string>;
+  hospitalNames: Record<string, string>;
+  appointments: Appointment[];
+}
+
+/**
+ * Everything the live model is allowed to see for one patient. The caller has
+ * already verified the doctor's relationship with the patient.
+ */
+async function loadPatientContext(patientId?: string): Promise<PatientContext> {
+  const [patient, doctors, hospitals, appointments] = await Promise.all([
+    patientId ? services.patients.getById(patientId) : Promise.resolve(null),
+    services.doctors.list(),
+    services.hospitals.list(),
+    patientId ? services.appointments.list({ patientId }) : Promise.resolve<Appointment[]>([]),
+  ]);
+
+  const records = patientId
+    ? await services.medicalRecords.listByPatient(patientId)
+    : [];
+
+  return {
+    patient,
+    records,
+    doctorNames: Object.fromEntries(doctors.map((doctor) => [doctor.id, doctor.fullName])),
+    hospitalNames: Object.fromEntries(
+      hospitals.map((hospital) => [hospital.id, hospital.name]),
+    ),
+    appointments,
+  };
+}
+
+/* -------------------------------------------------------------------------- */
 /*                                  Service                                   */
 /* -------------------------------------------------------------------------- */
 
@@ -491,9 +548,57 @@ export const clinicalAssistantService = {
       attachments: usedAttachments.length ? usedAttachments : undefined,
     };
 
-    await delay(700);
+    await delay(500);
 
-    const response = await this.composeResponse(request, conversation, usedAttachments);
+    // Prefer the live model. `requestClinicalAi` returns null when no provider
+    // is configured, in which case the labelled demo adapter answers instead.
+    // A configured-but-failing provider throws, so it is never disguised as a
+    // demonstration response.
+    const context = await loadPatientContext(request.patientId);
+    const live = await requestClinicalAi({
+      task: request.task,
+      message: request.message,
+      language: request.language ?? "en",
+      patient: context.patient ?? undefined,
+      records: context.records,
+      doctorNames: context.doctorNames,
+      hospitalNames: context.hospitalNames,
+      appointments: context.appointments,
+      attachments: usedAttachments.map((attachment) => ({
+        kind: attachment.kind,
+        name: attachment.name,
+        mimeType: attachment.mimeType,
+        dataUrl: attachment.kind === "image" ? attachment.previewUrl : undefined,
+      })),
+    });
+
+    const response: DoctorAIResponse = live
+      ? {
+          conversationId: conversation.id,
+          task: request.task,
+          message: live.message,
+          generatedSummary: live.generatedSummary,
+          observations: live.observations,
+          clinicalConsiderations: live.clinicalConsiderations,
+          redFlags: live.redFlags,
+          recommendedNextSteps: live.recommendedNextSteps,
+          urgency: live.urgency,
+          followUpQuestions: live.followUpQuestions,
+          limitations: live.limitations,
+          sourceRecords: (live.sourceRecordIds ?? [])
+            .map((recordId) => context.records.find((record) => record.id === recordId))
+            .filter((record): record is MedicalRecord => Boolean(record))
+            .map((record) => ({
+              recordId: record.id,
+              title: record.diagnosis || "Consultation record",
+              date: record.recordedAt,
+            })),
+          requiresDoctorReview: true,
+          isDemo: false,
+          provider: live.model,
+          language: request.language ?? "en",
+        }
+      : await this.composeResponse(request, conversation, usedAttachments);
     const assistantMessage: ClinicalMessage = {
       id: nextId("msg", ++messageSeq),
       role: "ASSISTANT",
@@ -655,6 +760,59 @@ export const clinicalAssistantService = {
           "Only stored diagnoses, treatments and prescriptions were compared.",
           "No laboratory values, units or reference ranges exist in this dataset, so no trend is claimed.",
         ]),
+      };
+    }
+
+    if (request.task === "CLINICAL_ANALYSIS") {
+      if (!request.patientId) {
+        return {
+          ...base,
+          message: "Select a patient to analyse their documented record.",
+          limitations: demoLimitations(["No patient was selected, so no records were read."]),
+        };
+      }
+
+      const records = await services.medicalRecords.listByPatient(request.patientId);
+      const doctors = await services.doctors.list();
+      const doctorNames = new Map(doctors.map((doctor) => [doctor.id, doctor.fullName]));
+      const ordered = [...records].sort((a, b) =>
+        a.recordedAt.localeCompare(b.recordedAt),
+      );
+      const latest = ordered.at(-1);
+
+      return {
+        ...base,
+        message: `Reviewed ${ordered.length} documented record(s). No live model is connected, so this is a structured read-back rather than an analysis.`,
+        generatedSummary: [
+          "Documented findings",
+          ...(ordered.length
+            ? ordered.map(
+                (record) =>
+                  `  • ${formatDateTime(record.recordedAt)} — ${record.diagnosis || "no diagnosis recorded"}; treatment: ${record.treatment || "none recorded"}`,
+              )
+            : ["  • No records are available."]),
+          "",
+          "Missing information",
+          "  • Allergies, vitals, laboratory values and imaging are not recorded in this dataset.",
+        ].join("\n"),
+        observations: latest
+          ? [
+              `Most recent contact: ${formatDateTime(latest.recordedAt)} (${latest.diagnosis || "no diagnosis recorded"}).`,
+            ]
+          : ["No documented clinician contact."],
+        clinicalConsiderations: [
+          "No interpretation was generated because no AI provider is configured.",
+        ],
+        redFlags: [],
+        recommendedNextSteps: [
+          "Connect the AI gateway (AI_API_KEY) to enable model-assisted analysis.",
+          "Review the documented records above and record missing fields manually.",
+        ],
+        limitations: demoLimitations([
+          "No risk assessment or differential was produced by a model.",
+          "Nothing here is a diagnosis or a treatment order.",
+        ]),
+        sourceRecords: recordsToSources(ordered, doctorNames),
       };
     }
 
