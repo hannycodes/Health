@@ -19,9 +19,20 @@ export default defineConfig({
   },
   server: {
     port: 5173,
+    // The clinical AI gateway (`npm run dev:ai`) keeps the provider key
+    // server-side and is proxied so the browser only talks to its own origin.
+    proxy: {
+      "/api/ai": {
+        target: "http://127.0.0.1:8787",
+        changeOrigin: false,
+      },
+    },
   },
   test: {
     globals: true,
+    // Page-level tests render the full router and mock service layer; the
+    // default 5s is tight on a cold module graph.
+    testTimeout: 15_000,
     environment: "jsdom",
     setupFiles: ["./src/test/setup.ts"],
     css: true,

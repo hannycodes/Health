@@ -1,10 +1,11 @@
-import { NavLink, useNavigate } from "react-router-dom";
+import { NavLink } from "react-router-dom";
 import { LogOut } from "lucide-react";
 
 import { Logo } from "@/components/branding/Logo";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
 import type { Role } from "@/types";
+import { getInitials } from "@/utils/format";
 import { cn } from "@/lib/utils";
 import { NAV_BY_ROLE } from "./navConfig";
 
@@ -76,6 +77,8 @@ export function SignOutButton({
 }
 
 export function Sidebar({ role, onNavigate, className }: SidebarProps) {
+  const { user } = useAuth();
+
   return (
     <aside
       className={cn(
@@ -92,6 +95,16 @@ export function Sidebar({ role, onNavigate, className }: SidebarProps) {
       </div>
 
       <div className="border-sidebar-border border-t px-3 py-3">
+        {user && (
+          <div className="mb-2 flex items-center gap-2 px-1">
+            <span className="bg-secondary text-secondary-foreground flex size-8 shrink-0 items-center justify-center rounded-full text-xs font-semibold">
+              {getInitials(user.fullName)}
+            </span>
+            <span className="min-w-0 flex-1 truncate text-xs font-medium">
+              {user.fullName}
+            </span>
+          </div>
+        )}
         <SignOutButton onSignedOut={onNavigate} />
       </div>
     </aside>

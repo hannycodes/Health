@@ -967,6 +967,12 @@ async function middleware(
   next: (error?: unknown) => void,
 ) {
   try {
+    // `/api/ai/*` belongs to the clinical AI gateway, which Vite proxies to
+    // `npm run dev:ai`; leave those requests for the proxy.
+    if (req.url?.startsWith("/ai")) {
+      next();
+      return;
+    }
     await handle(req, res);
   } catch (error) {
     if (error instanceof HttpError) {
