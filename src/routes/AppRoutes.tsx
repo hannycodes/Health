@@ -7,6 +7,18 @@ import { PatientLayout } from "@/layouts/PatientLayout";
 import { SuperAdminLayout } from "@/layouts/SuperAdminLayout";
 import { LandingPage } from "@/pages/LandingPage";
 import { LoginPage } from "@/pages/auth/LoginPage";
+import { DoctorAppointmentDetailsPage } from "@/pages/doctor/DoctorAppointmentDetailsPage";
+import { DoctorAppointmentsPage } from "@/pages/doctor/DoctorAppointmentsPage";
+import { DoctorAssistantPage } from "@/pages/doctor/DoctorAssistantPage";
+import { DoctorAvailabilityPage } from "@/pages/doctor/DoctorAvailabilityPage";
+import { DoctorDashboardPage } from "@/pages/doctor/DoctorDashboardPage";
+import { DoctorNotificationsPage } from "@/pages/doctor/DoctorNotificationsPage";
+import { DoctorPatientDetailsPage } from "@/pages/doctor/DoctorPatientDetailsPage";
+import { DoctorPatientHistoryPage } from "@/pages/doctor/DoctorPatientHistoryPage";
+import { DoctorPatientsPage } from "@/pages/doctor/DoctorPatientsPage";
+import { DoctorProfilePage } from "@/pages/doctor/DoctorProfilePage";
+import { MedicalRecordDetailsPage } from "@/pages/doctor/MedicalRecordDetailsPage";
+import { NewMedicalRecordPage } from "@/pages/doctor/NewMedicalRecordPage";
 import { PatientAiNavigator } from "@/pages/patient/PatientAiNavigator";
 import { PatientAppointments } from "@/pages/patient/PatientAppointments";
 import { PatientDashboard } from "@/pages/patient/PatientDashboard";
@@ -58,61 +70,22 @@ export const appRoutes: RouteObject[] = [
         path: "/doctor",
         element: <DoctorLayout />,
         children: [
+          { index: true, element: <DoctorDashboardPage /> },
+          { path: "dashboard", element: <DoctorDashboardPage /> },
+          { path: "appointments", element: <DoctorAppointmentsPage /> },
+          { path: "appointments/:id", element: <DoctorAppointmentDetailsPage /> },
+          { path: "patients", element: <DoctorPatientsPage /> },
+          { path: "patients/:id", element: <DoctorPatientDetailsPage /> },
+          { path: "patients/:id/history", element: <DoctorPatientHistoryPage /> },
+          { path: "patients/:id/records/new", element: <NewMedicalRecordPage /> },
           {
-            index: true,
-            element: (
-              <ScaffoldPage
-                title="Doctor dashboard"
-                description="Today's schedule, patient load and pending appointments."
-                breadcrumbs={[{ label: "Doctor" }]}
-                owner="Doctor dashboard owner"
-              />
-            ),
+            path: "patients/:id/records/:recordId",
+            element: <MedicalRecordDetailsPage />,
           },
-          {
-            path: "appointments",
-            element: (
-              <ScaffoldPage
-                title="Appointments"
-                description="All appointments booked with you, including completed visits."
-                breadcrumbs={[{ label: "Doctor", to: "/doctor" }, { label: "Appointments" }]}
-                owner="Doctor dashboard owner"
-              />
-            ),
-          },
-          {
-            path: "patients",
-            element: (
-              <ScaffoldPage
-                title="Patients"
-                description="Patients you have consulted, with their visit history."
-                breadcrumbs={[{ label: "Doctor", to: "/doctor" }, { label: "Patients" }]}
-                owner="Doctor dashboard owner"
-              />
-            ),
-          },
-          {
-            path: "availability",
-            element: (
-              <ScaffoldPage
-                title="Availability"
-                description="Weekly working hours and consultation slot length."
-                breadcrumbs={[{ label: "Doctor", to: "/doctor" }, { label: "Availability" }]}
-                owner="Doctor dashboard owner"
-              />
-            ),
-          },
-          {
-            path: "profile",
-            element: (
-              <ScaffoldPage
-                title="Profile"
-                description="Public profile, specialty, consultation fee and bio."
-                breadcrumbs={[{ label: "Doctor", to: "/doctor" }, { label: "Profile" }]}
-                owner="Doctor dashboard owner"
-              />
-            ),
-          },
+          { path: "assistant", element: <DoctorAssistantPage /> },
+          { path: "availability", element: <DoctorAvailabilityPage /> },
+          { path: "profile", element: <DoctorProfilePage /> },
+          { path: "notifications", element: <DoctorNotificationsPage /> },
         ],
       },
     ],

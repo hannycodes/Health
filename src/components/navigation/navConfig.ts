@@ -1,4 +1,5 @@
 import {
+  Bell,
   Building2,
   CalendarDays,
   CalendarRange,
@@ -43,7 +44,9 @@ export const NAV_BY_ROLE: Record<Role, NavItem[]> = {
     { label: "Dashboard", to: "/doctor", icon: LayoutDashboard, end: true },
     { label: "Appointments", to: "/doctor/appointments", icon: CalendarDays },
     { label: "Patients", to: "/doctor/patients", icon: UsersRound },
+    { label: "AI Clinical Assistant", to: "/doctor/assistant", icon: Sparkles },
     { label: "Availability", to: "/doctor/availability", icon: CalendarRange },
+    { label: "Notifications", to: "/doctor/notifications", icon: Bell },
     { label: "Profile", to: "/doctor/profile", icon: UserRound },
   ],
   HOSPITAL_ADMIN: [

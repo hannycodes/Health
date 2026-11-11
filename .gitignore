@@ -36,3 +36,6 @@ coverage
 
 # Freebuff workspace metadata
 .freebuff/
+
+# Local Node runtime used for verification
+.tools/
