@@ -1,6 +1,7 @@
 import {
   createContext,
   useCallback,
+  useEffect,
   useMemo,
   useState,
   type ReactNode,
@@ -33,6 +34,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<AuthSession | null>(() =>
     services.auth.getSession(),
   );
+
+  // A stored session can outlive a server restart or token rotation: verify it
+  // once on load so stale credentials sign the user out instead of 401-ing.
+  useEffect(() => {
+    if (!session) return;
+    let cancelled = false;
+
+    services.auth
+      .getCurrentUser()
+      .then((user) => {
+        if (!cancelled && !user) setSession(null);
+      })
+      .catch(() => {
+        if (!cancelled) {
+          void services.auth.logout();
+          setSession(null);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [session]);
 
   const login = useCallback(async (credentials: LoginCredentials) => {
     const nextSession = await services.auth.login(credentials);

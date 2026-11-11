@@ -34,9 +34,9 @@ Open the printed URL (default <http://localhost:5173>). The app redirects to `/l
 | `npm run test`      | Run the Vitest suite once                 |
 | `npm run test:watch`| Run Vitest in watch mode                  |
 
-## Demo accounts
+## Accounts
 
-Password for every account: `demo1234`
+Password for every account: `MyHealth2026!`
 
 | Role           | Email                 | Profile                          |
 | -------------- | --------------------- | -------------------------------- |
@@ -50,7 +50,7 @@ The login page has one-click buttons that fill these credentials.
 > Frontend role guards are a UX convenience only. Real authorization must be enforced by
 > the backend.
 
-## Demo data model
+## Data model
 
 All services resolve through `src/services/index.ts`. The mock implementation stores
 everything in one `localStorage`-backed database (`src/services/mocks/store.ts`), so an
