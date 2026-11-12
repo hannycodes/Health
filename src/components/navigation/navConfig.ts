@@ -2,6 +2,7 @@ import {
   Activity,
   BarChart3,
   Bell,
+  BriefcaseBusiness,
   Building2,
   CalendarDays,
   CalendarRange,
@@ -16,6 +17,7 @@ import {
   UserCog,
   Users,
   UsersRound,
+  Wallet,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
@@ -49,15 +51,25 @@ export const NAV_BY_ROLE: Record<Role, NavItem[]> = {
     { label: "Dashboard", to: "/doctor", icon: LayoutDashboard, end: true },
     { label: "Appointments", to: "/doctor/appointments", icon: CalendarDays },
     { label: "Patients", to: "/doctor/patients", icon: UsersRound },
+    { label: "AI Clinical Assistant", to: "/doctor/assistant", icon: Sparkles },
     { label: "Availability", to: "/doctor/availability", icon: CalendarRange },
+    { label: "Notifications", to: "/doctor/notifications", icon: Bell },
     { label: "Profile", to: "/doctor/profile", icon: UserRound },
   ],
   HOSPITAL_ADMIN: [
     { label: "Dashboard", to: "/hospital-admin", icon: LayoutDashboard, end: true },
-    { label: "Doctors", to: "/hospital-admin/doctors", icon: Stethoscope },
     { label: "Appointments", to: "/hospital-admin/appointments", icon: CalendarDays },
+    { label: "Calendar", to: "/hospital-admin/calendar", icon: CalendarRange },
+    { label: "Doctors", to: "/hospital-admin/doctors", icon: Stethoscope },
+    { label: "Departments", to: "/hospital-admin/departments", icon: Building2 },
+    { label: "Patients", to: "/hospital-admin/patients", icon: UsersRound },
+    { label: "Analytics", to: "/hospital-admin/analytics", icon: BarChart3 },
+    { label: "Payments", to: "/hospital-admin/payments", icon: Wallet },
+    { label: "Notifications", to: "/hospital-admin/notifications", icon: Bell },
     { label: "Hospital Profile", to: "/hospital-admin/profile", icon: Building2 },
     { label: "Capacity", to: "/hospital-admin/capacity", icon: ClipboardList },
+    { label: "Workforce", to: "/hospital/workforce", icon: BriefcaseBusiness },
+    { label: "Settings", to: "/hospital-admin/settings", icon: Settings },
   ],
   SUPER_ADMIN: [
     {
@@ -76,6 +88,7 @@ export const NAV_BY_ROLE: Record<Role, NavItem[]> = {
     { label: "Administrators", to: "/admin/administrators", icon: UserCog },
     { label: "Doctors", to: "/admin/doctors", icon: Stethoscope },
     { label: "Patients", to: "/admin/patients", icon: UsersRound },
+    { label: "Workforce", to: "/admin/workforce", icon: BriefcaseBusiness },
     { label: "Analytics", to: "/admin/analytics", icon: BarChart3 },
     { label: "Activity & audit", to: "/admin/activity", icon: Activity },
     { label: "Notifications", to: "/admin/notifications", icon: Bell },

@@ -65,8 +65,7 @@ export function LoginPage() {
       <CardHeader>
         <CardTitle className="text-xl">Sign in to MyHealth</CardTitle>
         <CardDescription>
-          One account for every role — you are taken to the right workspace
-          automatically.
+          Sign in with your MyHealth account to open your workspace.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-5">

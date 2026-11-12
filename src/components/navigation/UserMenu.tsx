@@ -11,6 +11,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { ROLE_LABELS } from "@/constants";
 import { useAuth } from "@/hooks/useAuth";
 import type { Role } from "@/types";
 import { getInitials } from "@/utils/format";
@@ -22,6 +23,7 @@ const PROFILE_PATH: Record<Role, string> = {
   SUPER_ADMIN: "/super-admin",
 };
 
+/** Account menu. The trigger shows initials only. */
 export function UserMenu() {
   const { user, role, logout } = useAuth();
   const navigate = useNavigate();
@@ -40,7 +42,7 @@ export function UserMenu() {
           variant="ghost"
           size="icon"
           className="rounded-full"
-          aria-label={`Account: ${getInitials(user.fullName)}`}
+          aria-label={`Account menu for ${user.fullName}`}
         >
           <Avatar className="size-8">
             <AvatarFallback className="text-xs font-semibold">
@@ -49,10 +51,10 @@ export function UserMenu() {
           </Avatar>
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-60">
+      <DropdownMenuContent align="end" className="w-56">
         <DropdownMenuLabel className="font-normal">
-          <p className="text-sm font-medium">{user.fullName}</p>
-          <p className="text-muted-foreground truncate text-xs">{user.email}</p>
+          <p className="truncate text-sm font-medium">{user.fullName}</p>
+          <p className="text-muted-foreground truncate text-xs">{ROLE_LABELS[role]}</p>
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
         <DropdownMenuItem onClick={() => navigate(PROFILE_PATH[role])}>

@@ -6,7 +6,7 @@ import {
 } from "@/components/ui/sheet";
 import { Logo } from "@/components/branding/Logo";
 import type { Role } from "@/types";
-import { SidebarNav } from "./Sidebar";
+import { SidebarNav, SignOutButton } from "./Sidebar";
 
 interface MobileNavProps {
   role: Role;
@@ -25,6 +25,9 @@ export function MobileNav({ role, open, onOpenChange }: MobileNavProps) {
         </SheetHeader>
         <div className="px-3">
           <SidebarNav role={role} onNavigate={() => onOpenChange(false)} />
+        </div>
+        <div className="border-sidebar-border mt-auto border-t px-3 py-3">
+          <SignOutButton onSignedOut={() => onOpenChange(false)} />
         </div>
       </SheetContent>
     </Sheet>

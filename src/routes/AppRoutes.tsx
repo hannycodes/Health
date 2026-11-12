@@ -1,5 +1,16 @@
 import { Navigate, type RouteObject } from "react-router-dom";
 
+import { AdminWorkforcePage } from "@/modules/workforce/AdminPage";
+import {
+  HospitalWorkforceAnalyticsPage,
+  HospitalWorkforceApplicantsPage,
+  HospitalWorkforceCreatePage,
+  HospitalWorkforceDashboardPage,
+  HospitalWorkforceInterviewsPage,
+  HospitalWorkforceOffersPage,
+  HospitalWorkforceOpportunitiesPage,
+} from "@/modules/workforce/HospitalPages";
+import { workforceRoutes } from "@/modules/workforce/routes";
 import { AuthLayout } from "@/layouts/AuthLayout";
 import { DoctorLayout } from "@/layouts/DoctorLayout";
 import { HospitalAdminLayout } from "@/layouts/HospitalAdminLayout";
@@ -8,9 +19,41 @@ import { SuperAdminLayout } from "@/layouts/SuperAdminLayout";
 import { LandingPage } from "@/pages/LandingPage";
 import { AccountPendingPage } from "@/pages/auth/AccountPendingPage";
 import { ForgotPasswordPage } from "@/pages/auth/ForgotPasswordPage";
+import { DoctorApplyPage } from "@/pages/auth/DoctorApplyPage";
+import { HospitalApplyPage } from "@/pages/auth/HospitalApplyPage";
 import { LoginPage } from "@/pages/auth/LoginPage";
+import { PatientRegisterPage } from "@/pages/auth/PatientRegisterPage";
 import { RegisterPage } from "@/pages/auth/RegisterPage";
 import { ResetPasswordPage } from "@/pages/auth/ResetPasswordPage";
+import { CreateDepartmentPage } from "@/pages/hospital-admin/CreateDepartmentPage";
+import { DepartmentDetailsPage } from "@/pages/hospital-admin/DepartmentDetailsPage";
+import { DoctorDetailsPage } from "@/pages/hospital-admin/DoctorDetailsPage";
+import { HospitalAnalyticsPage } from "@/pages/hospital-admin/HospitalAnalyticsPage";
+import { HospitalAppointmentDetailsPage } from "@/pages/hospital-admin/HospitalAppointmentDetailsPage";
+import { HospitalAppointmentsPage } from "@/pages/hospital-admin/HospitalAppointmentsPage";
+import { HospitalCalendarPage } from "@/pages/hospital-admin/HospitalCalendarPage";
+import { HospitalDashboard } from "@/pages/hospital-admin/HospitalDashboard";
+import { HospitalDepartmentsPage } from "@/pages/hospital-admin/HospitalDepartmentsPage";
+import { HospitalDoctorsPage } from "@/pages/hospital-admin/HospitalDoctorsPage";
+import { HospitalNotificationsPage } from "@/pages/hospital-admin/HospitalNotificationsPage";
+import { HospitalPatientDetailsPage } from "@/pages/hospital-admin/HospitalPatientDetailsPage";
+import { HospitalPatientsPage } from "@/pages/hospital-admin/HospitalPatientsPage";
+import { HospitalPaymentsPage } from "@/pages/hospital-admin/HospitalPaymentsPage";
+import { HospitalProfilePage } from "@/pages/hospital-admin/HospitalProfilePage";
+import { HospitalSettingsPage } from "@/pages/hospital-admin/HospitalSettingsPage";
+import { RegisterDoctorPage } from "@/pages/hospital-admin/RegisterDoctorPage";
+import { DoctorAppointmentDetailsPage } from "@/pages/doctor/DoctorAppointmentDetailsPage";
+import { DoctorAppointmentsPage } from "@/pages/doctor/DoctorAppointmentsPage";
+import { DoctorAssistantPage } from "@/pages/doctor/DoctorAssistantPage";
+import { DoctorAvailabilityPage } from "@/pages/doctor/DoctorAvailabilityPage";
+import { DoctorDashboardPage } from "@/pages/doctor/DoctorDashboardPage";
+import { DoctorNotificationsPage } from "@/pages/doctor/DoctorNotificationsPage";
+import { DoctorPatientDetailsPage } from "@/pages/doctor/DoctorPatientDetailsPage";
+import { DoctorPatientHistoryPage } from "@/pages/doctor/DoctorPatientHistoryPage";
+import { DoctorPatientsPage } from "@/pages/doctor/DoctorPatientsPage";
+import { DoctorProfilePage } from "@/pages/doctor/DoctorProfilePage";
+import { MedicalRecordDetailsPage } from "@/pages/doctor/MedicalRecordDetailsPage";
+import { NewMedicalRecordPage } from "@/pages/doctor/NewMedicalRecordPage";
 import { PatientAiNavigator } from "@/pages/patient/PatientAiNavigator";
 import { PatientAppointmentDetails } from "@/pages/patient/PatientAppointmentDetails";
 import { PatientAssistant } from "@/pages/patient/PatientAssistant";
@@ -26,7 +69,6 @@ import { PatientHospitals } from "@/pages/patient/PatientHospitals";
 import { PatientMedicalHistory } from "@/pages/patient/PatientMedicalHistory";
 import { PatientProfile } from "@/pages/patient/PatientProfile";
 import { NotFoundPage } from "@/pages/shared/NotFoundPage";
-import { ScaffoldPage } from "@/pages/shared/ScaffoldPage";
 import { UnauthorizedPage } from "@/pages/shared/UnauthorizedPage";
 import { AdminActivityPage } from "@/pages/super-admin/AdminActivityPage";
 import { AdminAnalyticsPage } from "@/pages/super-admin/AdminAnalyticsPage";
@@ -58,6 +100,9 @@ export const appRoutes: RouteObject[] = [
     children: [
       { path: "/login", element: <LoginPage /> },
       { path: "/register", element: <RegisterPage /> },
+      { path: "/register/patient", element: <PatientRegisterPage /> },
+      { path: "/register/doctor", element: <DoctorApplyPage /> },
+      { path: "/register/hospital", element: <HospitalApplyPage /> },
       { path: "/forgot-password", element: <ForgotPasswordPage /> },
       { path: "/reset-password", element: <ResetPasswordPage /> },
       { path: "/account-pending", element: <AccountPendingPage /> },
@@ -98,61 +143,22 @@ export const appRoutes: RouteObject[] = [
         path: "/doctor",
         element: <DoctorLayout />,
         children: [
+          { index: true, element: <DoctorDashboardPage /> },
+          { path: "dashboard", element: <DoctorDashboardPage /> },
+          { path: "appointments", element: <DoctorAppointmentsPage /> },
+          { path: "appointments/:id", element: <DoctorAppointmentDetailsPage /> },
+          { path: "patients", element: <DoctorPatientsPage /> },
+          { path: "patients/:id", element: <DoctorPatientDetailsPage /> },
+          { path: "patients/:id/history", element: <DoctorPatientHistoryPage /> },
+          { path: "patients/:id/records/new", element: <NewMedicalRecordPage /> },
           {
-            index: true,
-            element: (
-              <ScaffoldPage
-                title="Doctor dashboard"
-                description="Today's schedule, patient load and pending appointments."
-                breadcrumbs={[{ label: "Doctor" }]}
-                owner="Doctor dashboard owner"
-              />
-            ),
+            path: "patients/:id/records/:recordId",
+            element: <MedicalRecordDetailsPage />,
           },
-          {
-            path: "appointments",
-            element: (
-              <ScaffoldPage
-                title="Appointments"
-                description="All appointments booked with you, including completed visits."
-                breadcrumbs={[{ label: "Doctor", to: "/doctor" }, { label: "Appointments" }]}
-                owner="Doctor dashboard owner"
-              />
-            ),
-          },
-          {
-            path: "patients",
-            element: (
-              <ScaffoldPage
-                title="Patients"
-                description="Patients you have consulted, with their visit history."
-                breadcrumbs={[{ label: "Doctor", to: "/doctor" }, { label: "Patients" }]}
-                owner="Doctor dashboard owner"
-              />
-            ),
-          },
-          {
-            path: "availability",
-            element: (
-              <ScaffoldPage
-                title="Availability"
-                description="Weekly working hours and consultation slot length."
-                breadcrumbs={[{ label: "Doctor", to: "/doctor" }, { label: "Availability" }]}
-                owner="Doctor dashboard owner"
-              />
-            ),
-          },
-          {
-            path: "profile",
-            element: (
-              <ScaffoldPage
-                title="Profile"
-                description="Public profile, specialty, consultation fee and bio."
-                breadcrumbs={[{ label: "Doctor", to: "/doctor" }, { label: "Profile" }]}
-                owner="Doctor dashboard owner"
-              />
-            ),
-          },
+          { path: "assistant", element: <DoctorAssistantPage /> },
+          { path: "availability", element: <DoctorAvailabilityPage /> },
+          { path: "profile", element: <DoctorProfilePage /> },
+          { path: "notifications", element: <DoctorNotificationsPage /> },
         ],
       },
     ],
@@ -164,73 +170,25 @@ export const appRoutes: RouteObject[] = [
         path: "/hospital-admin",
         element: <HospitalAdminLayout />,
         children: [
-          {
-            index: true,
-            element: (
-              <ScaffoldPage
-                title="Hospital dashboard"
-                description="Appointments, doctor roster and bed capacity at a glance."
-                breadcrumbs={[{ label: "Hospital admin" }]}
-                owner="Hospital admin owner"
-              />
-            ),
-          },
-          {
-            path: "doctors",
-            element: (
-              <ScaffoldPage
-                title="Doctors"
-                description="Doctors practising at your hospital."
-                breadcrumbs={[
-                  { label: "Hospital admin", to: "/hospital-admin" },
-                  { label: "Doctors" },
-                ]}
-                owner="Hospital admin owner"
-              />
-            ),
-          },
-          {
-            path: "appointments",
-            element: (
-              <ScaffoldPage
-                title="Appointments"
-                description="Every appointment booked at your hospital."
-                breadcrumbs={[
-                  { label: "Hospital admin", to: "/hospital-admin" },
-                  { label: "Appointments" },
-                ]}
-                owner="Hospital admin owner"
-              />
-            ),
-          },
-          {
-            path: "profile",
-            element: (
-              <ScaffoldPage
-                title="Hospital profile"
-                description="Contact details, description and listed specialties."
-                breadcrumbs={[
-                  { label: "Hospital admin", to: "/hospital-admin" },
-                  { label: "Hospital profile" },
-                ]}
-                owner="Hospital admin owner"
-              />
-            ),
-          },
-          {
-            path: "capacity",
-            element: (
-              <ScaffoldPage
-                title="Capacity"
-                description="Bed availability and occupancy for the hospital."
-                breadcrumbs={[
-                  { label: "Hospital admin", to: "/hospital-admin" },
-                  { label: "Capacity" },
-                ]}
-                owner="Hospital admin owner"
-              />
-            ),
-          },
+          { index: true, element: <HospitalDashboard /> },
+          { path: "dashboard", element: <Navigate to="/hospital-admin" replace /> },
+          { path: "profile", element: <HospitalProfilePage /> },
+          { path: "departments", element: <HospitalDepartmentsPage /> },
+          { path: "departments/new", element: <CreateDepartmentPage /> },
+          { path: "departments/:id", element: <DepartmentDetailsPage /> },
+          { path: "doctors", element: <HospitalDoctorsPage /> },
+          { path: "doctors/new", element: <RegisterDoctorPage /> },
+          { path: "doctors/:id", element: <DoctorDetailsPage /> },
+          { path: "appointments", element: <HospitalAppointmentsPage /> },
+          { path: "appointments/:id", element: <HospitalAppointmentDetailsPage /> },
+          { path: "patients", element: <HospitalPatientsPage /> },
+          { path: "patients/:id", element: <HospitalPatientDetailsPage /> },
+          { path: "calendar", element: <HospitalCalendarPage /> },
+          { path: "analytics", element: <HospitalAnalyticsPage /> },
+          { path: "payments", element: <HospitalPaymentsPage /> },
+          { path: "notifications", element: <HospitalNotificationsPage /> },
+          { path: "settings", element: <HospitalSettingsPage /> },
+          { path: "capacity", element: <Navigate to="/hospital-admin/profile" replace /> },
         ],
       },
     ],
@@ -256,10 +214,30 @@ export const appRoutes: RouteObject[] = [
           { path: "activity", element: <AdminActivityPage /> },
           { path: "notifications", element: <AdminNotificationsPage /> },
           { path: "settings", element: <AdminSettingsPage /> },
+          { path: "workforce", element: <AdminWorkforcePage /> },
         ],
       },
     ],
   },
+  {
+    element: <ProtectedRoute allowedRoles={["HOSPITAL_ADMIN"]} />,
+    children: [
+      {
+        path: "/hospital/workforce",
+        element: <HospitalAdminLayout />,
+        children: [
+          { index: true, element: <HospitalWorkforceDashboardPage /> },
+          { path: "opportunities", element: <HospitalWorkforceOpportunitiesPage /> },
+          { path: "opportunities/create", element: <HospitalWorkforceCreatePage /> },
+          { path: "applicants", element: <HospitalWorkforceApplicantsPage /> },
+          { path: "interviews", element: <HospitalWorkforceInterviewsPage /> },
+          { path: "offers", element: <HospitalWorkforceOffersPage /> },
+          { path: "analytics", element: <HospitalWorkforceAnalyticsPage /> },
+        ],
+      },
+    ],
+  },
+  ...workforceRoutes,
   // Legacy path kept as a redirect so older links and seeded notifications work.
   { path: "/super-admin", element: <Navigate to="/admin/dashboard" replace /> },
   { path: "/super-admin/*", element: <Navigate to="/admin/dashboard" replace /> },

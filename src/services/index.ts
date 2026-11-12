@@ -6,10 +6,10 @@ import { demoDb } from "./mocks/store";
 const httpServices = createHttpServices();
 
 /**
- * Everything talks to the local API (`server/api.ts`, mounted at `/api` by
- * Vite): auth, the Super Admin portal, directory data, appointments, medical
- * records, payments and the AI health assistant. Only the legacy AI navigator
- * still resolves through the shared mocks.
+ * Auth, administration, directory, scheduling, records, payments and the AI
+ * health assistant talk to the API in `server/` (Express plus the AI gateway,
+ * proxied at `/api` by Vite). Only the legacy AI navigator still resolves
+ * through the shared mocks.
  *
  * `VITE_DATA_SOURCE=mock` keeps tests fully in-memory; `http` routes every
  * service through the API.
@@ -41,6 +41,7 @@ export const services: ServiceContainer =
 
 export const appointmentService = services.appointments;
 export const authService = services.auth;
+export const departmentService = services.departments;
 export const doctorService = services.doctors;
 export const hospitalService = services.hospitals;
 export const medicalRecordService = services.medicalRecords;

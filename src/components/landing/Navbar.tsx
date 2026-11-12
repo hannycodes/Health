@@ -12,6 +12,13 @@ import {
 } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
 
+const NAV_LINKS = [
+  { label: "Home", href: "#top" },
+  { label: "Solution", href: "#solution" },
+  { label: "Features", href: "#features" },
+  { label: "Workforce", href: "/workforce" },
+];
+
 export function Navbar() {
   const [scrolled, setScrolled] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -34,6 +41,31 @@ export function Navbar() {
     >
       <div className="mx-auto flex h-16 max-w-6xl items-center justify-between gap-3 px-5">
         <Logo size="sm" />
+
+        <nav
+          aria-label="Landing page sections"
+          className="hidden items-center gap-0.5 lg:flex"
+        >
+          {NAV_LINKS.map((link) =>
+            link.href.startsWith("#") ? (
+              <a
+                key={link.label}
+                href={link.href}
+                className="text-ink-muted hover:text-ink rounded-md px-2.5 py-2 text-[13px] font-medium transition-colors"
+              >
+                {link.label}
+              </a>
+            ) : (
+              <Link
+                key={link.label}
+                to={link.href}
+                className="text-ink-muted hover:text-ink rounded-md px-2.5 py-2 text-[13px] font-medium transition-colors"
+              >
+                {link.label}
+              </Link>
+            ),
+          )}
+        </nav>
 
         <div className="flex items-center gap-2">
           <Button
@@ -67,18 +99,41 @@ export function Navbar() {
               <Logo size="sm" to={null} />
             </SheetTitle>
           </SheetHeader>
-          <div className="flex flex-col gap-2 px-4 pt-2">
-            <Button className="w-full" asChild>
-              <Link to="/register" onClick={() => setMobileOpen(false)}>
-                Get started
-              </Link>
-            </Button>
-            <Button variant="outline" className="w-full" asChild>
-              <Link to="/login" onClick={() => setMobileOpen(false)}>
-                Sign in
-              </Link>
-            </Button>
-          </div>
+          <nav aria-label="Mobile navigation" className="flex flex-col gap-1 px-4 pt-2">
+            {NAV_LINKS.map((link) =>
+              link.href.startsWith("#") ? (
+                <a
+                  key={link.label}
+                  href={link.href}
+                  onClick={() => setMobileOpen(false)}
+                  className="hover:bg-brand-mint rounded-lg px-3 py-2.5 text-sm font-medium transition-colors"
+                >
+                  {link.label}
+                </a>
+              ) : (
+                <Link
+                  key={link.label}
+                  to={link.href}
+                  onClick={() => setMobileOpen(false)}
+                  className="hover:bg-brand-mint rounded-lg px-3 py-2.5 text-sm font-medium transition-colors"
+                >
+                  {link.label}
+                </Link>
+              ),
+            )}
+            <div className="border-line mt-2 space-y-2 border-t pt-3">
+              <Button className="w-full" asChild>
+                <Link to="/register" onClick={() => setMobileOpen(false)}>
+                  Get started
+                </Link>
+              </Button>
+              <Button variant="outline" className="w-full" asChild>
+                <Link to="/login" onClick={() => setMobileOpen(false)}>
+                  Sign in
+                </Link>
+              </Button>
+            </div>
+          </nav>
         </SheetContent>
       </Sheet>
     </header>

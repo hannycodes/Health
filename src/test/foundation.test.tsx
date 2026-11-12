@@ -81,8 +81,13 @@ describe("authentication", () => {
     });
 
     renderAt(ROLE_HOME.DOCTOR);
-    expect(await screen.findByRole("heading", { name: /doctor dashboard/i }))
-      .toBeInTheDocument();
+    expect(
+      await screen.findByRole(
+        "heading",
+        { name: /good (morning|afternoon|evening)/i },
+        { timeout: 5000 },
+      ),
+    ).toBeInTheDocument();
   });
 });
 

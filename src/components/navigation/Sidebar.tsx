@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { ROLE_LABELS } from "@/constants";
 import { useAuth } from "@/hooks/useAuth";
 import type { Role } from "@/types";
+import { getInitials } from "@/utils/format";
 import { cn } from "@/lib/utils";
 import { NAV_BY_ROLE } from "./navConfig";
 
@@ -44,14 +45,40 @@ export function SidebarNav({ role, onNavigate, className }: SidebarProps) {
   );
 }
 
-export function Sidebar({ role, onNavigate, className }: SidebarProps) {
+/** Shared sign-out action, used by the sidebar footer and the mobile drawer. */
+export function SignOutButton({
+  onSignedOut,
+  className,
+}: {
+  onSignedOut?: () => void;
+  className?: string;
+}) {
   const { logout } = useAuth();
   const navigate = useNavigate();
 
   async function handleSignOut() {
     await logout();
+    onSignedOut?.();
     navigate("/login", { replace: true });
   }
+
+  return (
+    <Button
+      variant="ghost"
+      className={cn(
+        "text-sidebar-foreground/75 hover:bg-sidebar-accent/60 hover:text-sidebar-accent-foreground w-full justify-start gap-3",
+        className,
+      )}
+      onClick={() => void handleSignOut()}
+    >
+      <LogOut className="size-4" aria-hidden="true" />
+      Sign out
+    </Button>
+  );
+}
+
+export function Sidebar({ role, onNavigate, className }: SidebarProps) {
+  const { user } = useAuth();
 
   return (
     <aside
@@ -71,15 +98,18 @@ export function Sidebar({ role, onNavigate, className }: SidebarProps) {
         <SidebarNav role={role} onNavigate={onNavigate} />
       </div>
 
-      <div className="border-sidebar-border border-t p-3">
-        <Button
-          variant="ghost"
-          className="text-sidebar-foreground/75 hover:bg-sidebar-accent/60 hover:text-sidebar-accent-foreground w-full justify-start gap-3 px-3"
-          onClick={() => void handleSignOut()}
-        >
-          <LogOut className="size-4 shrink-0" aria-hidden="true" />
-          Sign out
-        </Button>
+      <div className="border-sidebar-border border-t px-3 py-3">
+        {user && (
+          <div className="mb-2 flex items-center gap-2 px-1">
+            <span className="bg-secondary text-secondary-foreground flex size-8 shrink-0 items-center justify-center rounded-full text-xs font-semibold">
+              {getInitials(user.fullName)}
+            </span>
+            <span className="min-w-0 flex-1 truncate text-xs font-medium">
+              {user.fullName}
+            </span>
+          </div>
+        )}
+        <SignOutButton onSignedOut={onNavigate} />
       </div>
     </aside>
   );

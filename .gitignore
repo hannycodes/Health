@@ -41,3 +41,6 @@ coverage
 
 # Local API data (seeded on first run, never committed)
 server/data
+
+# Local Node runtime used for verification
+.tools/

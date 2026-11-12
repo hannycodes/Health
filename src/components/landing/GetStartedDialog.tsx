@@ -84,7 +84,7 @@ export function GetStartedDialog({
             <button
               key={option.title}
               type="button"
-              onClick={() => navigate("/login")}
+              onClick={() => navigate("/register")}
               className="hover:border-primary/40 hover:bg-brand-mint/60 focus-visible:border-ring focus-visible:ring-ring/40 group flex items-start gap-3 rounded-xl border px-3.5 py-3 text-left transition-colors focus-visible:ring-[3px] focus-visible:outline-none"
             >
               <span className="bg-secondary text-secondary-foreground group-hover:bg-primary group-hover:text-primary-foreground flex size-9 shrink-0 items-center justify-center rounded-lg transition-colors">
@@ -100,9 +100,7 @@ export function GetStartedDialog({
           ))}
         </div>
 
-        <p className="text-muted-foreground text-xs">
-          No real patient information is used in this environment.
-        </p>
+
       </DialogContent>
     </Dialog>
   );
