@@ -595,6 +595,7 @@ async function askPatientModel({ message, patientContext, language, images, retr
     body: JSON.stringify({
       model: CHAT_MODEL,
       temperature: retry ? 0.1 : 0.2,
+      max_tokens: 800,
       response_format: { type: "json_object" },
       messages,
     }),
@@ -693,6 +694,57 @@ async function handlePatientImage(req, res) {
     sizeBytes,
     previewUrl: dataUrl,
   });
+}
+
+async function handlePatientAdvice(req, res) {
+  const body = await readBody(req, MAX_JSON_BYTES);
+  let payload;
+  try {
+    payload = JSON.parse(body.toString("utf8"));
+  } catch {
+    sendJson(res, 400, { error: "Invalid JSON body." });
+    return;
+  }
+
+  const message = String(payload?.message ?? "").trim();
+  if (!message) {
+    sendJson(res, 422, { error: "A message is required." });
+    return;
+  }
+  if (!API_KEY) {
+    sendJson(res, 503, {
+      error: "The AI provider is not configured on the server.",
+      configured: false,
+    });
+    return;
+  }
+
+  const history = Array.isArray(payload?.history) ? payload.history.slice(-8) : [];
+  const historyText = history
+    .filter((entry) => entry && typeof entry.content === "string" && entry.content.trim())
+    .map(
+      (entry) =>
+        `${entry.role === "PATIENT" ? "Patient" : "Assistant"}: ${entry.content.trim()}`,
+    )
+    .join("\n");
+  const language = patientLanguage(message, String(payload?.language ?? "auto"));
+  const prompt = historyText
+    ? `Earlier in this conversation:\n${historyText}\n\nNew patient message: ${message}`
+    : message;
+
+  try {
+    const reply = await askPatientModel({
+      message: prompt,
+      patientContext: payload?.patientContext ?? {},
+      language,
+      images: [],
+      retry: false,
+    });
+    sendJson(res, 200, { ...reply, isMock: false });
+  } catch (error) {
+    const failure = error && error.payload ? error : providerError(502, "");
+    sendJson(res, failure.status, failure.payload);
+  }
 }
 
 async function handlePatientMessage(req, res) {
@@ -876,6 +928,11 @@ const server = createServer(async (req, res) => {
 
     if (url.pathname === "/api/ai/health-assistant/messages" && req.method === "POST") {
       await handlePatientMessage(req, res);
+      return;
+    }
+
+    if (url.pathname === "/api/ai/patient-advice" && req.method === "POST") {
+      await handlePatientAdvice(req, res);
       return;
     }
 

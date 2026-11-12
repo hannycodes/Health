@@ -4,6 +4,43 @@ import { db, nextId, saveDb } from "../db.js";
 import { HttpError, requireRole } from "../auth.js";
 import { assert, getDoctor, getHospital, getUser } from "../helpers.js";
 
+const AI_GATEWAY_URL = process.env.AI_GATEWAY_URL ?? "http://127.0.0.1:8787";
+
+/**
+ * Ask the gateway for a live patient-friendly reply.
+ *
+ * The gateway owns the provider key. Any failure (gateway down, no key, timeout)
+ * returns null so the caller can fall back to the deterministic triage rules.
+ */
+async function askLiveAssistant({ message, patientContext, language, history }) {
+  const body = JSON.stringify({ message, patientContext, language, history });
+
+  // One retry: provider cold starts and transient rate limits are common.
+  for (let attempt = 0; attempt < 2; attempt++) {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 80_000);
+    try {
+      const response = await fetch(`${AI_GATEWAY_URL}/api/ai/patient-advice`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body,
+        signal: controller.signal,
+      });
+      if (response.ok) {
+        const data = await response.json();
+        return typeof data?.message === "string" && data.message.trim() ? data : null;
+      }
+    } catch {
+      // fall through to the retry / rule-based fallback
+    } finally {
+      clearTimeout(timeout);
+    }
+    if (attempt === 0) await new Promise((resolve) => setTimeout(resolve, 800));
+  }
+
+  return null;
+}
+
 /**
  * Deliberately simple, deterministic triage.
  *
@@ -262,7 +299,7 @@ export function supportRoutes(auth) {
    * seeded doctors, and keeps the whole conversation so a new chat remembers
    * the patient's earlier concerns.
    */
-  router.post("/ai/health-assistant/messages", (req, res) => {
+  router.post("/ai/health-assistant/messages", async (req, res) => {
     const body = req.body ?? {};
     const patient = getUser(req.user.id);
     assert(patient && patient.role === "PATIENT", 403, "Only patients can use this assistant.");
@@ -294,11 +331,33 @@ export function supportRoutes(auth) {
       LOW: "ROUTINE",
     };
 
+    const live = await askLiveAssistant({
+      message,
+      patientContext: body.patientContext,
+      language: body.language,
+      history: conversation.messages
+        .slice(-8)
+        .map((entry) => ({ role: entry.role, content: entry.content })),
+    });
+
+    let specialty = result.specialty;
+    if (live?.recommendedSpecialty) {
+      const normalized = String(live.recommendedSpecialty).toLowerCase();
+      const match = db.users.find(
+        (user) =>
+          user.role === "DOCTOR" &&
+          (user.specialty.toLowerCase() === normalized ||
+            normalized.includes(user.specialty.toLowerCase()) ||
+            user.specialty.toLowerCase().includes(normalized)),
+      );
+      if (match) specialty = match.specialty;
+    }
+
     const doctors = db.users
       .filter(
         (user) =>
           user.role === "DOCTOR" &&
-          user.specialty === result.specialty &&
+          user.specialty === specialty &&
           user.isActive !== false &&
           user.accountStatus !== "PENDING_INVITATION",
       )
@@ -309,13 +368,13 @@ export function supportRoutes(auth) {
       .sort((a, b) => (b.rating ?? 0) - (a.rating ?? 0))
       .slice(0, 3);
 
-    const history = db.aiConversations
+    const earlier = db.aiConversations
       .filter((item) => item.patientId === patient.id && item.id !== conversation.id)
       .flatMap((item) => item.messages.filter((entry) => entry.role === "ASSISTANT"))
       .slice(-2);
 
-    const memory = history.length
-      ? ` Earlier you discussed: ${history.map((entry) => entry.content.split(".")[0]).join("; ")}.`
+    const memory = earlier.length
+      ? ` Earlier you discussed: ${earlier.map((entry) => entry.content.split(".")[0]).join("; ")}.`
       : "";
 
     const doctorLine = doctors.length
@@ -324,7 +383,7 @@ export function supportRoutes(auth) {
           .join(", ")}.`
       : " No matching doctor is currently available — start with General Medicine.";
 
-    const content = `${result.advice}${doctorLine}${memory}`.trim();
+    const content = live ? live.message : `${result.advice}${doctorLine}${memory}`.trim();
     const now = new Date().toISOString();
 
     const patientMessage = {
@@ -343,20 +402,22 @@ export function supportRoutes(auth) {
       role: "ASSISTANT",
       content,
       attachments: [],
-      urgency: urgencyMap[result.urgency] ?? "INFORMATIONAL",
-      followUpQuestions: [
-        "How long have you had these symptoms?",
-        "Is anything making it worse or better?",
-      ],
-      recommendations: [
-        `See a ${result.specialty} specialist.`,
-        ...(doctors.length ? [] : ["Book a General Medicine consultation first."]),
-      ],
+      urgency: live?.urgency ?? urgencyMap[result.urgency] ?? "INFORMATIONAL",
+      followUpQuestions: live?.followUpQuestions?.length
+        ? live.followUpQuestions.slice(0, 4)
+        : ["How long have you had these symptoms?", "Is anything making it worse or better?"],
+      recommendations: live?.recommendations?.length
+        ? live.recommendations.slice(0, 5)
+        : [
+            `See a ${specialty} specialist.`,
+            ...(doctors.length ? [] : ["Book a General Medicine consultation first."]),
+          ],
       disclaimer:
+        live?.disclaimer ??
         "This is guidance, not a diagnosis. For emergencies, contact emergency services immediately.",
       recommendedDoctorIds: doctors.map((doctor) => doctor.id),
       recommendedHospitalIds: [...new Set(doctors.map((doctor) => doctor.hospitalId))],
-      isMock: true,
+      isMock: !live,
       createdAt: now,
     };
 
@@ -376,7 +437,7 @@ export function supportRoutes(auth) {
       disclaimer: assistantMessage.disclaimer,
       recommendedDoctorIds: assistantMessage.recommendedDoctorIds,
       recommendedHospitalIds: assistantMessage.recommendedHospitalIds,
-      isMock: true,
+      isMock: assistantMessage.isMock,
     });
   });
 

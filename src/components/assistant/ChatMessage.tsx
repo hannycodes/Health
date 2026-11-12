@@ -4,7 +4,8 @@ import { Link } from "react-router-dom";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import type { AIChatMessage } from "@/types";
+import { services } from "@/services";
+import type { AIChatMessage, Doctor } from "@/types";
 import { cn } from "@/lib/utils";
 import { URGENCY_META } from "./urgency";
 
@@ -24,6 +25,61 @@ function formatClock(iso: string) {
     hour: "2-digit",
     minute: "2-digit",
   }).format(date);
+}
+
+/** Real doctors returned by the assistant, each with a direct booking action. */
+function RecommendedDoctors({ ids }: { ids: string[] }) {
+  const [doctors, setDoctors] = useState<Array<{ doctor: Doctor; hospitalName: string }>>([]);
+  const key = ids.join(",");
+
+  useEffect(() => {
+    let active = true;
+    Promise.all(
+      ids.map(async (id) => {
+        const doctor = await services.doctors.getById(id);
+        if (!doctor) return null;
+        const hospital = await services.hospitals.getById(doctor.hospitalId);
+        return { doctor, hospitalName: hospital?.name ?? "Partner hospital" };
+      }),
+    )
+      .then((rows) => {
+        if (active) {
+          setDoctors(rows.filter(Boolean) as Array<{ doctor: Doctor; hospitalName: string }>);
+        }
+      })
+      .catch(() => undefined);
+    return () => {
+      active = false;
+    };
+    // ids is stable per message; key tracks changes.
+  }, [key]);
+
+  if (doctors.length === 0) return null;
+
+  return (
+    <div className="space-y-1.5">
+      <p className="text-xs font-semibold">Recommended doctors</p>
+      {doctors.map(({ doctor, hospitalName }) => (
+        <div
+          key={doctor.id}
+          className="bg-card flex items-center justify-between gap-3 rounded-xl border px-3 py-2"
+        >
+          <div className="min-w-0">
+            <p className="truncate text-xs font-medium">{doctor.fullName}</p>
+            <p className="text-muted-foreground truncate text-[11px]">
+              {doctor.specialty} · {hospitalName}
+            </p>
+            <p className="text-[11px]">
+              {Math.round(doctor.consultationFee)} ETB · ★ {doctor.rating.toFixed(1)}
+            </p>
+          </div>
+          <Button size="sm" variant="outline" className="h-7 shrink-0 px-2 text-xs" asChild>
+            <Link to={`/patient/appointments/book/${doctor.id}`}>Book</Link>
+          </Button>
+        </div>
+      ))}
+    </div>
+  );
 }
 
 export function ChatMessage({ message, onFollowUp, followUpsDisabled }: ChatMessageProps) {
@@ -169,9 +225,12 @@ export function ChatMessage({ message, onFollowUp, followUpsDisabled }: ChatMess
         )}
 
         {!isPatient && message.recommendedDoctorIds && message.recommendedDoctorIds.length > 0 && (
-          <Button variant="link" size="sm" className="h-auto p-0 text-xs" asChild>
-            <Link to="/patient/doctors">Find a recommended specialist</Link>
-          </Button>
+          <div className="space-y-1.5">
+            <RecommendedDoctors ids={message.recommendedDoctorIds} />
+            <Button variant="link" size="sm" className="h-auto p-0 text-[11px]" asChild>
+              <Link to="/patient/doctors">Browse all doctors</Link>
+            </Button>
+          </div>
         )}
 
         {!isPatient && message.disclaimer && (
@@ -204,7 +263,7 @@ export function ChatMessage({ message, onFollowUp, followUpsDisabled }: ChatMess
           )}
           {message.isMock && (
             <Badge variant="outline" className="h-4 px-1.5 text-[10px]">
-              Offline sample — not AI
+              Rule-based guidance — live AI unavailable
             </Badge>
           )}
         </div>
