@@ -26,11 +26,19 @@ function localApi(): Plugin {
         env: process.env,
       });
 
-      const ai = spawn(process.execPath, ["server/index.mjs"], {
-        cwd: rootDir,
-        stdio: ["ignore", "pipe", "pipe"],
-        env: process.env,
-      });
+      const ai = spawn(
+        process.execPath,
+        [
+          "--env-file-if-exists=.env",
+          "--env-file-if-exists=.env.local",
+          "server/index.mjs",
+        ],
+        {
+          cwd: rootDir,
+          stdio: ["ignore", "pipe", "pipe"],
+          env: process.env,
+        },
+      );
 
       ai.stdout?.on("data", (chunk: Buffer) =>
         server.config.logger.info(`[ai] ${chunk.toString().trim()}`),
