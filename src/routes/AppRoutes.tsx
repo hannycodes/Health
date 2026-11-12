@@ -81,6 +81,7 @@ export const appRoutes: RouteObject[] = [
           { path: "assistant", element: <PatientAssistant /> },
           { path: "appointments", element: <PatientAppointments /> },
           { path: "appointments/new", element: <PatientBookAppointment /> },
+          { path: "appointments/book/:doctorId", element: <PatientBookAppointment /> },
           { path: "appointments/:id", element: <PatientAppointmentDetails /> },
           { path: "medical-history", element: <PatientMedicalHistory /> },
           { path: "medical-history/:id", element: <PatientMedicalRecordDetails /> },
