@@ -18,6 +18,7 @@ const COLLECTIONS = [
   "notifications",
   "medicalRecords",
   "recommendations",
+  "aiConversations",
   "applications",
   "auditLogs",
   "passwordResets",

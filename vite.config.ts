@@ -26,6 +26,19 @@ function localApi(): Plugin {
         env: process.env,
       });
 
+      const ai = spawn(process.execPath, ["server/index.mjs"], {
+        cwd: rootDir,
+        stdio: ["ignore", "pipe", "pipe"],
+        env: process.env,
+      });
+
+      ai.stdout?.on("data", (chunk: Buffer) =>
+        server.config.logger.info(`[ai] ${chunk.toString().trim()}`),
+      );
+      ai.stderr?.on("data", (chunk: Buffer) =>
+        server.config.logger.warn(`[ai] ${chunk.toString().trim()}`),
+      );
+
       child.stdout?.on("data", (chunk: Buffer) =>
         server.config.logger.info(`[api] ${chunk.toString().trim()}`),
       );
@@ -40,7 +53,10 @@ function localApi(): Plugin {
         }
       });
 
-      server.httpServer?.on("close", () => child.kill());
+      server.httpServer?.on("close", () => {
+        child.kill();
+        ai.kill();
+      });
     },
   };
 }
@@ -55,14 +71,15 @@ export default defineConfig({
   },
   server: {
     port: 5173,
+    // The AI gateway keeps the provider key server-side. Only its own routes are
+    // proxied; triage, recommendations and saved patient conversations stay on
+    // the Express API that owns the database.
     proxy: {
-      // The clinical AI gateway (`npm run dev:ai`) keeps the provider key
-      // server-side; the more specific prefix must come first.
-      "/api/ai": {
-        target: "http://127.0.0.1:8787",
-        changeOrigin: false,
-      },
-      // The one API lives in server/ (Express, port 8000). Run `npm run api`.
+      "/api/ai/status": { target: "http://127.0.0.1:8787", changeOrigin: false },
+      "/api/ai/clinical": { target: "http://127.0.0.1:8787", changeOrigin: false },
+      "/api/ai/transcribe": { target: "http://127.0.0.1:8787", changeOrigin: false },
+      "/api/ai/images": { target: "http://127.0.0.1:8787", changeOrigin: false },
+      // The one API lives in server/ (Express, port 8000).
       "/api": {
         target: process.env.VITE_API_PROXY_TARGET ?? "http://localhost:8000",
         changeOrigin: true,

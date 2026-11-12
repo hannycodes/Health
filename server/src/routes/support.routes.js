@@ -129,7 +129,18 @@ export function supportRoutes(auth) {
     if (req.user.role === "PATIENT") {
       rows = rows.filter((record) => record.patientId === req.user.id);
     } else if (req.user.role === "DOCTOR") {
-      rows = rows.filter((record) => record.doctorId === req.user.id);
+      // Doctors see their own records, plus the full history of any patient
+      // who has booked with them. Hospital administrators stay excluded above.
+      const inCare = new Set(
+        db.appointments
+          .filter((appointment) => appointment.doctorId === req.user.id)
+          .map((appointment) => appointment.patientId),
+      );
+      if (patientId && inCare.has(patientId)) {
+        rows = rows.filter((record) => record.patientId === patientId);
+      } else {
+        rows = rows.filter((record) => record.doctorId === req.user.id);
+      }
     }
 
     if (patientId) rows = rows.filter((record) => record.patientId === patientId);
@@ -195,6 +206,178 @@ export function supportRoutes(auth) {
     db.medicalRecords = [record, ...db.medicalRecords];
     saveDb();
     res.status(201).json(record);
+  });
+
+  /* ---------------------------------------------------------------------- */
+  /*                           AI health assistant                          */
+  /* ---------------------------------------------------------------------- */
+
+  function conversationFor(req, id) {
+    const conversation = db.aiConversations.find((item) => item.id === id);
+    assert(conversation, 404, "Conversation not found.");
+    assert(
+      conversation.patientId === req.user.id || req.user.role === "SUPER_ADMIN",
+      403,
+      "That conversation belongs to another patient.",
+    );
+    return conversation;
+  }
+
+  router.get("/ai/conversations", (req, res) => {
+    const requested = req.query.patientId;
+    assert(
+      !requested || requested === req.user.id,
+      403,
+      "You can only view your own conversations.",
+    );
+    const rows = db.aiConversations
+      .filter((item) => item.patientId === req.user.id)
+      .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
+    res.json(rows);
+  });
+
+  router.post("/ai/conversations", (req, res) => {
+    const now = new Date().toISOString();
+    const conversation = {
+      id: nextId("cnv"),
+      patientId: req.user.id,
+      title: "New conversation",
+      createdAt: now,
+      updatedAt: now,
+      messages: [],
+    };
+    db.aiConversations = [...db.aiConversations, conversation];
+    saveDb();
+    res.status(201).json(conversation);
+  });
+
+  router.get("/ai/conversations/:id", (req, res) => {
+    res.json(conversationFor(req, req.params.id));
+  });
+
+  /**
+   * Patient health assistant.
+   *
+   * Uses the same deterministic triage rules as the navigator, recommends real
+   * seeded doctors, and keeps the whole conversation so a new chat remembers
+   * the patient's earlier concerns.
+   */
+  router.post("/ai/health-assistant/messages", (req, res) => {
+    const body = req.body ?? {};
+    const patient = getUser(req.user.id);
+    assert(patient && patient.role === "PATIENT", 403, "Only patients can use this assistant.");
+
+    const message = typeof body.message === "string" ? body.message.trim() : "";
+    assert(message.length >= 2 || Array.isArray(body.imageIds), 422, "Type a message first.");
+
+    let conversation;
+    if (body.conversationId) {
+      conversation = conversationFor(req, body.conversationId);
+    } else {
+      const now = new Date().toISOString();
+      conversation = {
+        id: nextId("cnv"),
+        patientId: patient.id,
+        title: "New conversation",
+        createdAt: now,
+        updatedAt: now,
+        messages: [],
+      };
+      db.aiConversations = [...db.aiConversations, conversation];
+    }
+
+    const result = triage(message);
+    const urgencyMap = {
+      EMERGENCY: "EMERGENCY",
+      HIGH: "URGENT",
+      MODERATE: "ROUTINE",
+      LOW: "ROUTINE",
+    };
+
+    const doctors = db.users
+      .filter(
+        (user) =>
+          user.role === "DOCTOR" &&
+          user.specialty === result.specialty &&
+          user.isActive !== false &&
+          user.accountStatus !== "PENDING_INVITATION",
+      )
+      .filter((user) => {
+        const hospital = getHospital(user.hospitalId);
+        return hospital && hospital.approvalStatus === "APPROVED";
+      })
+      .sort((a, b) => (b.rating ?? 0) - (a.rating ?? 0))
+      .slice(0, 3);
+
+    const history = db.aiConversations
+      .filter((item) => item.patientId === patient.id && item.id !== conversation.id)
+      .flatMap((item) => item.messages.filter((entry) => entry.role === "ASSISTANT"))
+      .slice(-2);
+
+    const memory = history.length
+      ? ` Earlier you discussed: ${history.map((entry) => entry.content.split(".")[0]).join("; ")}.`
+      : "";
+
+    const doctorLine = doctors.length
+      ? ` Suggested doctors: ${doctors
+          .map((doctor) => `${doctor.fullName} (${doctor.specialty})`)
+          .join(", ")}.`
+      : " No matching doctor is currently available — start with General Medicine.";
+
+    const content = `${result.advice}${doctorLine}${memory}`.trim();
+    const now = new Date().toISOString();
+
+    const patientMessage = {
+      id: nextId("msg"),
+      conversationId: conversation.id,
+      role: "PATIENT",
+      content: message || "Shared an image.",
+      attachments: [],
+      isMock: false,
+      createdAt: now,
+    };
+
+    const assistantMessage = {
+      id: nextId("msg"),
+      conversationId: conversation.id,
+      role: "ASSISTANT",
+      content,
+      attachments: [],
+      urgency: urgencyMap[result.urgency] ?? "INFORMATIONAL",
+      followUpQuestions: [
+        "How long have you had these symptoms?",
+        "Is anything making it worse or better?",
+      ],
+      recommendations: [
+        `See a ${result.specialty} specialist.`,
+        ...(doctors.length ? [] : ["Book a General Medicine consultation first."]),
+      ],
+      disclaimer:
+        "This is guidance, not a diagnosis. For emergencies, contact emergency services immediately.",
+      recommendedDoctorIds: doctors.map((doctor) => doctor.id),
+      recommendedHospitalIds: [...new Set(doctors.map((doctor) => doctor.hospitalId))],
+      isMock: true,
+      createdAt: now,
+    };
+
+    conversation.messages.push(patientMessage, assistantMessage);
+    conversation.updatedAt = now;
+    if (conversation.messages.length <= 2) {
+      conversation.title = (message || "Image consultation").slice(0, 60);
+    }
+    saveDb();
+
+    res.status(201).json({
+      conversationId: conversation.id,
+      message: content,
+      urgency: assistantMessage.urgency,
+      followUpQuestions: assistantMessage.followUpQuestions,
+      recommendations: assistantMessage.recommendations,
+      disclaimer: assistantMessage.disclaimer,
+      recommendedDoctorIds: assistantMessage.recommendedDoctorIds,
+      recommendedHospitalIds: assistantMessage.recommendedHospitalIds,
+      isMock: true,
+    });
   });
 
   /* ---------------------------------------------------------------------- */
