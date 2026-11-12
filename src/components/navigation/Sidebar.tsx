@@ -1,7 +1,7 @@
 import { NavLink, useNavigate } from "react-router-dom";
 import { LogOut } from "lucide-react";
 
-import { BrandMark } from "@/components/common/BrandMark";
+import { Logo } from "@/components/branding/Logo";
 import { Button } from "@/components/ui/button";
 import { ROLE_LABELS } from "@/constants";
 import { useAuth } from "@/hooks/useAuth";
@@ -61,7 +61,7 @@ export function Sidebar({ role, onNavigate, className }: SidebarProps) {
       )}
     >
       <div className="border-sidebar-border flex h-16 items-center border-b px-5">
-        <BrandMark />
+        <Logo size="sm" />
       </div>
 
       <div className="flex-1 overflow-y-auto px-3 py-4">
