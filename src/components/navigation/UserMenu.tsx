@@ -11,7 +11,6 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { ROLE_LABELS } from "@/constants";
 import { useAuth } from "@/hooks/useAuth";
 import type { Role } from "@/types";
 import { getInitials } from "@/utils/format";
@@ -37,18 +36,17 @@ export function UserMenu() {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="ghost" className="h-9 gap-2 px-2">
-          <Avatar className="size-7">
-            <AvatarFallback>{getInitials(user.fullName)}</AvatarFallback>
+        <Button
+          variant="ghost"
+          size="icon"
+          className="rounded-full"
+          aria-label={`Account: ${getInitials(user.fullName)}`}
+        >
+          <Avatar className="size-8">
+            <AvatarFallback className="text-xs font-semibold">
+              {getInitials(user.fullName)}
+            </AvatarFallback>
           </Avatar>
-          <span className="hidden text-left sm:flex sm:flex-col">
-            <span className="text-xs leading-tight font-medium">{user.fullName}</span>
-            {ROLE_LABELS[role] !== user.fullName && (
-              <span className="text-muted-foreground text-[11px] leading-tight">
-                {ROLE_LABELS[role]}
-              </span>
-            )}
-          </span>
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-60">

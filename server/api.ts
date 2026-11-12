@@ -9,10 +9,13 @@ import type {
   AccountStatus,
   AIChatMessage,
   AIConversation,
+  Appointment,
   AuditAction,
   AuditLog,
   CareUrgency,
   Hospital,
+  MedicalRecord,
+  Payment,
   HospitalApprovalStatus,
   Notification,
   Patient,
@@ -646,6 +649,71 @@ function persistableMessage(message: AIChatMessage): AIChatMessage {
       previewUrl: "",
     })),
   };
+}
+
+/* -------------------------------------------------------------------------- */
+/*                             Clinical helpers                               */
+/* -------------------------------------------------------------------------- */
+
+function uid(prefix: string) {
+  return `${prefix}-${randomUUID().slice(0, 8)}`;
+}
+
+function appointmentMatches(appointment: Appointment, params: URLSearchParams) {
+  const patientId = params.get("patientId");
+  const doctorId = params.get("doctorId");
+  const hospitalId = params.get("hospitalId");
+  const status = params.get("status");
+  const date = params.get("date");
+  if (patientId && appointment.patientId !== patientId) return false;
+  if (doctorId && appointment.doctorId !== doctorId) return false;
+  if (hospitalId && appointment.hospitalId !== hospitalId) return false;
+  if (status && appointment.status !== status) return false;
+  if (date && appointment.date !== date) return false;
+  return true;
+}
+
+const sortAppointments = (a: Appointment, b: Appointment) =>
+  `${a.date}T${a.startTime}`.localeCompare(`${b.date}T${b.startTime}`);
+
+function detailedAppointment(appointment: Appointment) {
+  const patient = db.patients.find((item) => item.id === appointment.patientId);
+  const doctor = db.doctors.find((item) => item.id === appointment.doctorId);
+  const hospital = db.hospitals.find((item) => item.id === appointment.hospitalId);
+  const payment = db.payments.find(
+    (item) => item.appointmentId === appointment.id,
+  );
+  return {
+    ...appointment,
+    patientName: patient?.fullName ?? "Unknown patient",
+    doctorName: doctor?.fullName ?? "Unknown doctor",
+    doctorSpecialty: doctor?.specialty ?? "General Medicine",
+    hospitalName: hospital?.name ?? "Unknown hospital",
+    paymentStatus: payment?.status,
+    paymentMethod: payment?.method,
+  };
+}
+
+function notifyUser(
+  userId: string,
+  title: string,
+  message: string,
+  type: Notification["type"],
+  link: string,
+) {
+  db.notifications = [
+    {
+      id: uid("ntf"),
+      userId,
+      title,
+      message,
+      type,
+      isRead: false,
+      createdAt: nowISO(),
+      link,
+    },
+    ...db.notifications,
+  ];
 }
 
 /* -------------------------------------------------------------------------- */
@@ -1341,6 +1409,259 @@ async function handle(req: IncomingMessage, res: ServerResponse) {
         persist();
         return send(res, 200, db.settings);
       }
+    }
+  }
+
+  /* ----------------------------- Appointments ----------------------------- */
+
+  if (root === "appointments") {
+    if (method === "GET" && !second) {
+      const rows = db.appointments
+        .filter((appointment) => appointmentMatches(appointment, url.searchParams))
+        .sort(sortAppointments);
+      return send(
+        res,
+        200,
+        url.searchParams.get("expand") ? rows.map(detailedAppointment) : rows,
+      );
+    }
+
+    if (method === "POST" && !second) {
+      const doctor = db.doctors.find((item) => item.id === text(body.doctorId));
+      const hospital = db.hospitals.find((item) => item.id === text(body.hospitalId));
+      const patient = db.patients.find((item) => item.id === text(body.patientId));
+      if (!doctor) throw new HttpError(404, "Doctor not found.");
+      if (!hospital) throw new HttpError(404, "Hospital not found.");
+      if (!patient) throw new HttpError(404, "Patient profile not found.");
+      if (hospital.approvalStatus !== "APPROVED") {
+        throw new HttpError(
+          409,
+          "This hospital is not approved to accept appointments.",
+        );
+      }
+
+      const date = text(body.date);
+      const startTime = text(body.startTime);
+      const endTime = text(body.endTime);
+      const conflict = db.appointments.some(
+        (item) =>
+          item.doctorId === doctor.id &&
+          item.date === date &&
+          item.startTime === startTime &&
+          item.status !== "CANCELLED",
+      );
+      if (conflict) {
+        throw new HttpError(409, "That time slot is already booked. Choose another.");
+      }
+
+      const timestamp = nowISO();
+      const methodValue: Payment["method"] =
+        body.paymentMethod === "ONLINE" ? "ONLINE" : "PAY_AT_HOSPITAL";
+      const payment: Payment = {
+        id: uid("pay"),
+        appointmentId: uid("apt"),
+        patientId: patient.id,
+        amount: doctor.consultationFee,
+        currency: "ETB",
+        method: methodValue,
+        status: methodValue === "ONLINE" ? "PENDING" : "UNPAID_AT_HOSPITAL",
+        createdAt: timestamp,
+      };
+      const appointment: Appointment = {
+        id: payment.appointmentId,
+        patientId: patient.id,
+        doctorId: doctor.id,
+        hospitalId: hospital.id,
+        date,
+        startTime,
+        endTime,
+        status: "BOOKED",
+        reason: text(body.reason),
+        createdAt: timestamp,
+        updatedAt: timestamp,
+      };
+
+      db.payments = [payment, ...db.payments];
+      db.appointments = [appointment, ...db.appointments];
+      notifyUser(
+        patient.id,
+        "Appointment confirmed",
+        `Your appointment with ${doctor.fullName} on ${date} at ${startTime} is confirmed.`,
+        "APPOINTMENT",
+        "/patient/appointments",
+      );
+      notifyUser(
+        doctor.id,
+        "New appointment booked",
+        `${patient.fullName} booked a consultation on ${date} at ${startTime}.`,
+        "APPOINTMENT",
+        "/doctor/appointments",
+      );
+      persist();
+      return send(res, 201, appointment);
+    }
+
+    const appointment = second
+      ? db.appointments.find((item) => item.id === second)
+      : undefined;
+    if (second && !appointment) {
+      throw new HttpError(404, "Appointment not found.");
+    }
+
+    if (appointment) {
+      if (method === "GET" && !third) return send(res, 200, appointment);
+
+      if (method === "PATCH" && !third) {
+        const status = body.status;
+        if (status === "BOOKED" || status === "CANCELLED" || status === "COMPLETED") {
+          appointment.status = status;
+        }
+        if (text(body.date)) appointment.date = text(body.date);
+        if (text(body.startTime)) appointment.startTime = text(body.startTime);
+        if (text(body.endTime)) appointment.endTime = text(body.endTime);
+        if (text(body.reason)) appointment.reason = text(body.reason);
+        appointment.updatedAt = nowISO();
+        persist();
+        return send(res, 200, appointment);
+      }
+
+      if (method === "POST" && third === "cancel") {
+        if (appointment.status === "COMPLETED") {
+          throw new HttpError(409, "Completed appointments cannot be cancelled.");
+        }
+        appointment.status = "CANCELLED";
+        appointment.updatedAt = nowISO();
+        const doctor = db.doctors.find(
+          (item) => item.id === appointment.doctorId,
+        );
+        notifyUser(
+          appointment.patientId,
+          "Appointment cancelled",
+          `Your appointment with ${doctor?.fullName ?? "your doctor"} on ${appointment.date} was cancelled.`,
+          "APPOINTMENT",
+          "/patient/appointments",
+        );
+        notifyUser(
+          appointment.doctorId,
+          "Appointment cancelled",
+          `An appointment on ${appointment.date} at ${appointment.startTime} was cancelled.`,
+          "APPOINTMENT",
+          "/doctor/appointments",
+        );
+        persist();
+        return send(res, 200, appointment);
+      }
+
+      if (method === "POST" && third === "complete") {
+        appointment.status = "COMPLETED";
+        appointment.updatedAt = nowISO();
+        persist();
+        return send(res, 200, appointment);
+      }
+
+      if (method === "PATCH" && third === "reschedule") {
+        const conflict = db.appointments.some(
+          (item) =>
+            item.id !== appointment.id &&
+            item.doctorId === appointment.doctorId &&
+            item.date === text(body.date) &&
+            item.startTime === text(body.startTime) &&
+            item.status !== "CANCELLED",
+        );
+        if (conflict) {
+          throw new HttpError(409, "That time slot is already booked.");
+        }
+        appointment.date = text(body.date) || appointment.date;
+        appointment.startTime = text(body.startTime) || appointment.startTime;
+        appointment.endTime = text(body.endTime) || appointment.endTime;
+        appointment.updatedAt = nowISO();
+        persist();
+        return send(res, 200, appointment);
+      }
+    }
+  }
+
+  /* ---------------------------- Medical records --------------------------- */
+
+  if (root === "medical-records") {
+    if (method === "GET" && !second) {
+      const patientId = url.searchParams.get("patientId");
+      const doctorId = url.searchParams.get("doctorId");
+      let rows = db.medicalRecords;
+      if (patientId) rows = rows.filter((item) => item.patientId === patientId);
+      if (doctorId) rows = rows.filter((item) => item.doctorId === doctorId);
+      return send(
+        res,
+        200,
+        rows.slice().sort((a, b) => b.recordedAt.localeCompare(a.recordedAt)),
+      );
+    }
+
+    if (method === "GET" && second) {
+      const record = db.medicalRecords.find((item) => item.id === second);
+      if (!record) throw new HttpError(404, "Medical record not found.");
+      return send(res, 200, record);
+    }
+
+    if (method === "POST") {
+      const record: MedicalRecord = {
+        ...(body as unknown as Omit<MedicalRecord, "id" | "recordedAt">),
+        id: uid("rec"),
+        recordedAt: nowISO(),
+      };
+      db.medicalRecords = [record, ...db.medicalRecords];
+      persist();
+      return send(res, 201, record);
+    }
+  }
+
+  /* -------------------------------- Payments ------------------------------ */
+
+  if (root === "payments") {
+    if (method === "GET" && !second) {
+      const appointmentId = url.searchParams.get("appointmentId");
+      if (appointmentId) {
+        return send(
+          res,
+          200,
+          db.payments.find((item) => item.appointmentId === appointmentId) ?? null,
+        );
+      }
+      let rows = db.payments;
+      const patientId = url.searchParams.get("patientId");
+      const hospitalId = url.searchParams.get("hospitalId");
+      if (patientId) rows = rows.filter((item) => item.patientId === patientId);
+      if (hospitalId) {
+        const ids = new Set(
+          db.appointments
+            .filter((item) => item.hospitalId === hospitalId)
+            .map((item) => item.id),
+        );
+        rows = rows.filter((item) => ids.has(item.appointmentId));
+      }
+      return send(res, 200, rows);
+    }
+
+    const payment = db.payments.find((item) => item.appointmentId === second);
+    if (!payment) throw new HttpError(404, "Payment record not found.");
+
+    if (method === "POST" && (third === "pay" || third === "mark-paid")) {
+      payment.status = "PAID";
+      payment.paidAt = nowISO();
+      if (third === "pay") {
+        payment.method = "ONLINE";
+        payment.transactionRef = `MH-TXN-${Date.now()}`;
+      } else {
+        payment.method = "PAY_AT_HOSPITAL";
+      }
+      persist();
+      return send(res, 200, payment);
+    }
+
+    if (method === "POST" && third === "mark-failed") {
+      payment.status = "FAILED";
+      persist();
+      return send(res, 200, payment);
     }
   }
 

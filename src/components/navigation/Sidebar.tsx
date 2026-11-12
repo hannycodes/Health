@@ -1,8 +1,9 @@
 import { NavLink, useNavigate } from "react-router-dom";
 import { LogOut } from "lucide-react";
 
-import { Logo } from "@/components/branding/Logo";
+import { BrandMark } from "@/components/common/BrandMark";
 import { Button } from "@/components/ui/button";
+import { ROLE_LABELS } from "@/constants";
 import { useAuth } from "@/hooks/useAuth";
 import type { Role } from "@/types";
 import { cn } from "@/lib/utils";
@@ -60,10 +61,13 @@ export function Sidebar({ role, onNavigate, className }: SidebarProps) {
       )}
     >
       <div className="border-sidebar-border flex h-16 items-center border-b px-5">
-        <Logo size="sm" />
+        <BrandMark />
       </div>
 
       <div className="flex-1 overflow-y-auto px-3 py-4">
+        <p className="text-muted-foreground mb-2 px-3 text-[11px] font-semibold tracking-wider uppercase">
+          {ROLE_LABELS[role]} workspace
+        </p>
         <SidebarNav role={role} onNavigate={onNavigate} />
       </div>
 

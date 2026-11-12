@@ -5,8 +5,10 @@ import type {
   Doctor,
   Hospital,
   HospitalAdmin,
+  MedicalRecord,
   Notification,
   Patient,
+  Payment,
   PlatformSettings,
   SuperAdmin,
 } from "../src/types";
@@ -31,6 +33,8 @@ export interface ApiDatabase {
   superAdmins: SuperAdmin[];
   hospitals: Hospital[];
   appointments: Appointment[];
+  medicalRecords: MedicalRecord[];
+  payments: Payment[];
   notifications: Notification[];
   auditLogs: AuditLog[];
   conversations: AIConversation[];
@@ -413,6 +417,44 @@ const appointments: Appointment[] = appointmentSeed.map(
   }),
 );
 
+/* Completed visits get a payment and a medical record so the patient portal
+   has history to show on a fresh database. */
+const payments: Payment[] = appointments
+  .filter((appointment) => appointment.status === "COMPLETED")
+  .map((appointment) => {
+    const doctor = doctors.find((item) => item.id === appointment.doctorId);
+    return {
+      id: `pay-${appointment.id.replace(/^apt-/, "")}`,
+      appointmentId: appointment.id,
+      patientId: appointment.patientId,
+      amount: doctor?.consultationFee ?? 400,
+      currency: "ETB",
+      method: "PAY_AT_HOSPITAL",
+      status: "PAID",
+      createdAt: appointment.createdAt,
+      paidAt: appointment.updatedAt,
+    };
+  });
+
+const medicalRecords: MedicalRecord[] = appointments
+  .filter((appointment) => appointment.status === "COMPLETED")
+  .map((appointment) => {
+    const doctor = doctors.find((item) => item.id === appointment.doctorId);
+    return {
+      id: `rec-${appointment.id.replace(/^apt-/, "")}`,
+      patientId: appointment.patientId,
+      doctorId: appointment.doctorId,
+      hospitalId: appointment.hospitalId,
+      appointmentId: appointment.id,
+      recordType: "Consultation",
+      diagnosis: "Follow-up consultation",
+      treatment: "Reviewed symptoms and adjusted the care plan.",
+      prescription: [],
+      notes: `Recorded by ${doctor?.fullName ?? "the attending doctor"}.`,
+      recordedAt: appointment.updatedAt,
+    };
+  });
+
 type NotificationSeed = [string, string, string, string, string, boolean];
 
 const notificationSeed: NotificationSeed[] = [
@@ -533,6 +575,8 @@ export function createSeedDatabase(): ApiDatabase {
     superAdmins: structuredClone(superAdmins),
     hospitals: structuredClone(hospitals),
     appointments: structuredClone(appointments),
+    medicalRecords: structuredClone(medicalRecords),
+    payments: structuredClone(payments),
     notifications: structuredClone(notifications),
     auditLogs: structuredClone(auditLogs),
     conversations: [],

@@ -254,3 +254,11 @@
     transparent 70%
   );
 }
+
+@utility myhealth-surface {
+  background-image: radial-gradient(
+    60% 60% at 50% 0%,
+    var(--brand-mint-strong) 0%,
+    transparent 72%
+  );
+}
