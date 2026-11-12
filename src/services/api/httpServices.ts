@@ -621,9 +621,11 @@ class HttpAIHealthService implements AIHealthService {
   }
 
   async sendMessage(input: AIHealthRequest): Promise<AIHealthResponse> {
+    // The model can take up to a minute; the default API timeout is too short.
     const { data } = await httpClient.post<AIHealthResponse>(
       "/ai/health-assistant/messages",
       input,
+      { timeout: 120_000 },
     );
     return data;
   }

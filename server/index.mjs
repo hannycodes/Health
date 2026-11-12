@@ -326,6 +326,9 @@ async function handleClinical(req, res) {
         messages,
         temperature: 0.2,
         max_tokens: 1800,
+        // Reasoning tokens can consume the whole budget and delay the answer;
+        // the assistant returns structured JSON and does not need them.
+        thinking: { type: "disabled" },
         ...(jsonMode ? { response_format: { type: "json_object" } } : {}),
       }),
     });
@@ -596,6 +599,7 @@ async function askPatientModel({ message, patientContext, language, images, retr
       model: CHAT_MODEL,
       temperature: retry ? 0.1 : 0.2,
       max_tokens: 800,
+      thinking: { type: "disabled" },
       response_format: { type: "json_object" },
       messages,
     }),
