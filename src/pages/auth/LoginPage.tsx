@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link, Navigate, useLocation, useNavigate } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -29,7 +29,7 @@ const loginSchema = z.object({
 type LoginValues = z.infer<typeof loginSchema>;
 
 export function LoginPage() {
-  const { isAuthenticated, role, login } = useAuth();
+  const { isAuthenticated, role, user, login } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const [formError, setFormError] = useState<string | null>(null);
@@ -39,10 +39,6 @@ export function LoginPage() {
     resolver: zodResolver(loginSchema),
     defaultValues: { email: "", password: "", remember: true },
   });
-
-  if (isAuthenticated && role) {
-    return <Navigate to={ROLE_HOME[role]} replace />;
-  }
 
   async function onSubmit(values: LoginValues) {
     setFormError(null);
@@ -69,6 +65,20 @@ export function LoginPage() {
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-5">
+        {isAuthenticated && role && (
+          <div className="bg-muted/60 flex flex-wrap items-center justify-between gap-2 rounded-lg border px-3 py-2 text-sm">
+            <span className="text-muted-foreground">
+              Signed in as {user?.fullName ?? "your account"}.
+            </span>
+            <Link
+              to={ROLE_HOME[role]}
+              className="text-primary font-medium hover:underline"
+            >
+              Open my workspace
+            </Link>
+          </div>
+        )}
+
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4" noValidate>
           <div className="space-y-1.5">
             <Label htmlFor="email">Email</Label>
