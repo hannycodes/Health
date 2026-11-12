@@ -13,6 +13,7 @@ import type {
   AuditAction,
   AuditLog,
   CareUrgency,
+  DoctorAvailability,
   Hospital,
   MedicalRecord,
   Payment,
@@ -1012,8 +1013,50 @@ async function handle(req: IncomingMessage, res: ServerResponse) {
       const userId = url.searchParams.get("userId");
       return send(res, 200, db.doctors.find((doctor) => doctor.id === userId) ?? null);
     }
+    if (second && third === "availability" && method === "GET") {
+      return send(
+        res,
+        200,
+        db.availability.filter((slot) => slot.doctorId === second),
+      );
+    }
     const doctor = db.doctors.find((item) => item.id === second);
-    return send(res, 200, doctor ?? null);
+    if (!doctor) throw new HttpError(404, "Doctor not found.");
+    return send(res, 200, doctor);
+  }
+
+  /* ----------------------------- Availability ----------------------------- */
+
+  if (root === "availability") {
+    if (method === "POST") {
+      const slot: DoctorAvailability = {
+        id: uid("avl"),
+        doctorId: text(body.doctorId),
+        hospitalId: text(body.hospitalId),
+        dayOfWeek: body.dayOfWeek as DoctorAvailability["dayOfWeek"],
+        startTime: text(body.startTime),
+        endTime: text(body.endTime),
+        slotDurationMinutes: Number(body.slotDurationMinutes) || 30,
+        isActive: body.isActive !== false,
+      };
+      db.availability = [...db.availability, slot];
+      persist();
+      return send(res, 201, slot);
+    }
+
+    if (second && method === "PATCH") {
+      const slot = db.availability.find((item) => item.id === second);
+      if (!slot) throw new HttpError(404, "Availability not found.");
+      Object.assign(slot, body);
+      persist();
+      return send(res, 200, slot);
+    }
+
+    if (second && method === "DELETE") {
+      db.availability = db.availability.filter((item) => item.id !== second);
+      persist();
+      return send(res, 200, {});
+    }
   }
 
   /* ------------------------------- Patients ------------------------------- */

@@ -3,6 +3,7 @@ import type {
   Appointment,
   AuditLog,
   Doctor,
+  DoctorAvailability,
   Hospital,
   HospitalAdmin,
   MedicalRecord,
@@ -33,6 +34,7 @@ export interface ApiDatabase {
   superAdmins: SuperAdmin[];
   hospitals: Hospital[];
   appointments: Appointment[];
+  availability: DoctorAvailability[];
   medicalRecords: MedicalRecord[];
   payments: Payment[];
   notifications: Notification[];
@@ -417,6 +419,22 @@ const appointments: Appointment[] = appointmentSeed.map(
   }),
 );
 
+/* Each doctor keeps a small weekly clinic schedule so booking has real slots. */
+const availability: DoctorAvailability[] = doctors.flatMap((doctor, index) => {
+  const days: DoctorAvailability["dayOfWeek"][] =
+    index % 2 === 0 ? ["MONDAY", "THURSDAY"] : ["TUESDAY", "FRIDAY"];
+  return days.map((dayOfWeek, slot) => ({
+    id: `avl-${doctor.id.replace(/^doc-/, "")}-${slot + 1}`,
+    doctorId: doctor.id,
+    hospitalId: doctor.hospitalId,
+    dayOfWeek,
+    startTime: slot === 0 ? "09:00" : "14:00",
+    endTime: slot === 0 ? "12:00" : "17:00",
+    slotDurationMinutes: 30,
+    isActive: true,
+  }));
+});
+
 /* Completed visits get a payment and a medical record so the patient portal
    has history to show on a fresh database. */
 const payments: Payment[] = appointments
@@ -575,6 +593,7 @@ export function createSeedDatabase(): ApiDatabase {
     superAdmins: structuredClone(superAdmins),
     hospitals: structuredClone(hospitals),
     appointments: structuredClone(appointments),
+    availability: structuredClone(availability),
     medicalRecords: structuredClone(medicalRecords),
     payments: structuredClone(payments),
     notifications: structuredClone(notifications),
